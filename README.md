@@ -1,4 +1,8 @@
-# POS — Point of Sale System
+<<<<<<< HEAD
+# POS â€” Point of Sale System
+=======
+ï»¿# POS â€” Point of Sale System
+>>>>>>> a31cb97 (Add professional project documentation)
 
 A modern, responsive PHP and MySQL/MariaDB Point of Sale application for retail operations, cashier management, sales tracking, receipts, reporting, and PayHero-powered M-Pesa STK Push integration.
 
@@ -40,4 +44,4 @@ Under active development.
 
 ## Author
 
-Jackson Muoki — [GitHub](https://github.com/jacksonmuoki)
+Jackson Muoki â€” [GitHub](https://github.com/jacksonmuoki)
