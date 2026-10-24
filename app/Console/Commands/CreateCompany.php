@@ -2,50 +2,41 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Tenant;
-use App\Models\User;
+use App\Services\CompanyProvisioner;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Hash;
 
 class CreateCompany extends Command
 {
     protected $signature = 'company:create
         {id : Short id, e.g. acme}
+        {--name= : Display name, defaults to the id}
         {--domain= : Full domain, defaults to {id}.localhost}
         {--email=admin@example.com}
         {--password=ChangeMe123!}';
 
     protected $description = 'Create a company with its own database, migrations and admin user';
 
-    public function handle(): int
+    public function handle(CompanyProvisioner $provisioner): int
     {
-        $id = $this->argument('id');
+        $id     = strtolower((string) $this->argument('id'));
+        $name   = $this->option('name') ?: ucfirst($id);
+        $domain = $this->option('domain') ?: "$id.localhost";
 
-        if (Tenant::find($id)) {
-            $this->error("Company '$id' already exists.");
+        try {
+            $provisioner->create(
+                ['id' => $id, 'domain' => $domain],
+                [
+                    'name'     => $name . ' Admin',
+                    'email'    => $this->option('email'),
+                    'password' => $this->option('password'),
+                ],
+            );
+        } catch (\Throwable $e) {
+            $this->error('Could not create the company: ' . $e->getMessage());
             return self::FAILURE;
         }
 
-        $domain = $this->option('domain') ?: "$id.localhost";
-
-        $tenant = Tenant::create(['id' => $id]); // creates the DB and runs tenant migrations
-        $tenant->domains()->create(['domain' => $domain]);
-
-        $email = $this->option('email');
-        $password = $this->option('password');
-
-        $tenant->run(function () use ($id, $email, $password) {
-            User::create([
-                'name' => ucfirst($id) . ' Admin',
-                'email' => $email,
-                'password' => Hash::make($password),
-                'role' => 'admin',
-            ]);
-        });
-
         $this->info("Company '$id' ready at http://$domain:8000");
-        $this->line("Admin: $email (change the password after first login)");
-
         return self::SUCCESS;
     }
 }

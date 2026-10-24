@@ -11,6 +11,15 @@ class Tenant extends BaseTenant implements TenantWithDatabase
 {
     use HasDatabase, HasDomains;
 
-    public $incrementing = false;
     protected $keyType = 'string';
+
+    public function getIncrementing()
+    {
+        return false;
+    }
+
+    public static function getCustomColumns(): array
+    {
+        return ['id'];
+    }
 }
