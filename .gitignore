@@ -9,3 +9,4 @@
 *.zip
 public/payhero/config.local.php
 config.local.php
+dtabase/
