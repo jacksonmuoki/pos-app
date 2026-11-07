@@ -1,0 +1,13 @@
+{
+    "name": "intensify/investment-app",
+    "description": "Intensify Investment - internal router setup",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "require": {
+        "php": ">=8.0"
+    }
+}

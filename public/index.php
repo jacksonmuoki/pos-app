@@ -1,19 +1,20 @@
 <?php
 
-declare(strict_types=1);
-ini_set('display_errors', '1');
-error_reporting(E_ALL);
+use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
 
+define('LARAVEL_START', microtime(true));
 
+// Determine if the application is in maintenance mode...
+if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
+    require $maintenance;
+}
 
-session_start();
+// Register the Composer autoloader...
+require __DIR__.'/../vendor/autoload.php';
 
-require __DIR__ . '/../vendor/autoload.php';
-require __DIR__ . '/../app/includes/app.php';
-require __DIR__ . '/../app/includes/db.php';
-require __DIR__ . '/../routes/web.php';
-require __DIR__ . '/../app/includes/settings.php';
+// Bootstrap Laravel and handle the request...
+/** @var Application $app */
+$app = require_once __DIR__.'/../bootstrap/app.php';
 
-use App\Core\Router;
-
-Router::dispatch($_SERVER['REQUEST_METHOD'], parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+$app->handleRequest(Request::capture());

@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+/vendor/
+/node_modules/
+/logs/
+*.log
+*.bak
+*.zip
+public/payhero/config.local.php
+config.local.php
+dtabase/
