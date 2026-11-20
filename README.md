@@ -1,58 +1,219 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+﻿# POS-APP – Multi-Tenant Point of Sale System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A modern, scalable and multi-tenant Point of Sale (POS) application built with Laravel. Designed to help businesses manage sales, inventory, purchases, employees, branches and financial operations from one centralized platform.
 
-## About Laravel
+## Overview
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+POS-APP is a web-based business management solution where multiple companies can operate independently using their own tenant environments and databases.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Key Features
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Multi-Tenant Architecture** – Independent company environments and databases.
+- **Company Management** – Centralized super-admin company administration.
+- **Point of Sale** – Product sales, order management and receipt generation.
+- **Inventory Management** – Stock tracking and stock adjustments.
+- **Product Management** – Products, categories and brands.
+- **Purchase Management** – Supplier and purchase tracking.
+- **Sales Management** – Sales transactions and payment records.
+- **Payment Integration** – Payment processing architecture with M-Pesa integration support.
+- **Staff Management** – Employee accounts and role-based permissions.
+- **Reporting** – Business performance and transaction reports.
+- **Company Settings** – Individual tenant configuration.
+- **Responsive Interface** – Modern interface for business administration and cashier operations.
 
-## Learning Laravel
+## Technology Stack
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+| Component | Technology |
+|---|---|
+| Backend | PHP / Laravel |
+| Database | MySQL |
+| Frontend | Blade, HTML, CSS, JavaScript |
+| Multi-Tenancy | Stancl Tenancy |
+| Authentication | Laravel Authentication |
+| Permissions | Spatie Laravel Permission |
+| Dependency Management | Composer |
+| Frontend Dependencies | NPM |
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Requirements
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- PHP 8.3 or newer (check composer.json for the exact requirement).
+- Composer
+- MySQL 8.0 or compatible MySQL/MariaDB version
+- Node.js and NPM
+- Apache or Nginx
+- Git
 
-## Agentic Development
+## Installation Guide
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 1. Clone the Repository
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone -b feature/multi-tenant https://github.com/jacksonmuoki/pos-app.git
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Navigate into the project:
 
-## Contributing
+```bash
+cd pos-app
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 2. Install PHP Dependencies
 
-## Code of Conduct
+```bash
+composer install
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 3. Configure Environment
 
-## Security Vulnerabilities
+Copy the example environment file:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Windows:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Linux/macOS:
+
+```bash
+cp .env.example .env
+```
+
+Generate the application key:
+
+```bash
+php artisan key:generate
+```
+
+### 4. Configure Database
+
+Create your central MySQL database.
+
+Open `.env` and configure:
+
+```env
+APP_NAME="POS-APP"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://127.0.0.1:8000
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=pos
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+Update the database credentials to match your environment.
+
+Configure tenant database credentials and central domains according to the tenancy configuration.
+
+### 5. Run Database Migrations
+
+Run the central database migrations:
+
+```bash
+php artisan migrate
+```
+
+Run tenant migrations:
+
+```bash
+php artisan tenants:migrate
+```
+
+### 6. Install Frontend Dependencies
+
+```bash
+npm install
+```
+
+Build frontend assets:
+
+```bash
+npm run build
+```
+
+For development:
+
+```bash
+npm run dev
+```
+
+### 7. Start the Application
+
+```bash
+php artisan serve
+```
+
+Open:
+
+http://127.0.0.1:8000
+
+## Multi-Tenant Configuration
+
+The application uses Stancl Tenancy to provide separate company environments.
+
+Each company can have:
+
+- Its own tenant database.
+- Its own domain or subdomain.
+- Independent users and permissions.
+- Independent products and inventory.
+- Independent sales and purchases.
+- Company-specific settings.
+
+The central administration environment manages company provisioning and tenant administration.
+
+For local development, configure your central and tenant domains appropriately. Ensure tenant domains resolve to your local web server.
+
+## Project Structure
+
+```text
+pos-app/
+├── app/
+│   ├── Console/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   └── Middleware/
+│   ├── Models/
+│   ├── Providers/
+│   ├── Services/
+│   └── Support/
+├── bootstrap/
+├── config/
+├── database/
+│   └── migrations/
+│       └── tenant/
+├── public/
+├── resources/
+│   └── views/
+├── routes/
+├── storage/
+├── tests/
+├── composer.json
+└── README.md
+```
+
+## Security Notes
+
+- Never commit your `.env` file.
+- Keep database credentials private.
+- Use HTTPS in production.
+- Set `APP_DEBUG=false` in production.
+- Protect payment gateway credentials.
+- Configure appropriate database permissions.
+- Regularly back up central and tenant databases.
+
+## Development
+
+Current development branch:
+
+`feature/multi-tenant`
+
+Contributions and improvements are welcome.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+All rights reserved unless otherwise specified by the repository owner.
