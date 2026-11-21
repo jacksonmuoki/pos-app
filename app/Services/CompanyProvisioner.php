@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class CompanyProvisioner
 {
@@ -16,7 +18,7 @@ class CompanyProvisioner
      */
     public function create(array $tenant, array $admin): Tenant
     {
-        $id     = $tenant['id'];
+        $id = $tenant['id'];
         $domain = $tenant['domain'];
         $dbName = 'tenant' . $id;
 
@@ -26,8 +28,12 @@ class CompanyProvisioner
             );
         }
 
-        if (! (new Tenant)->getKeyType() === 'string' || (new Tenant)->getIncrementing()) {
-            throw new \RuntimeException('The Tenant model must use a string key with incrementing set to false.');
+        $tenantModel = new Tenant();
+
+        if ($tenantModel->getKeyType() !== 'string' || $tenantModel->getIncrementing()) {
+            throw new \RuntimeException(
+                'The Tenant model must use a string key with incrementing set to false.'
+            );
         }
 
         if (Tenant::query()->whereKey($id)->exists()) {
@@ -43,40 +49,61 @@ class CompanyProvisioner
         $created = null;
 
         try {
-            // forceCreate sets the id directly, so mass assignment cannot drop it.
+            // Create tenant.
             $created = Tenant::forceCreate(['id' => $id]);
 
-            if ($created->getKey() !== $id) {
-                throw new \RuntimeException("Tenant id was saved as '{$created->getKey()}' instead of '$id'.");
-            }
-
-            $created->domains()->create(['domain' => $domain]);
-
-            tenancy()->initialize($created);
-
-            $this->seedRoles();
-
-            $owner = User::create([
-                'name'     => $admin['name'],
-                'email'    => $admin['email'],
-                'password' => Hash::make($admin['password']),
-                'role'     => 'admin',
-                'active'   => true,
+            // Register tenant domain.
+            $created->domains()->create([
+                'domain' => $domain,
             ]);
 
-            if (Role::where('name', 'admin')->exists()) {
-                $owner->assignRole('admin');
-            }
+            // Initialize tenant database.
+            tenancy()->initialize($created);
 
+            // Clear permission cache before seeding.
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+            // Create all tenant roles and permissions.
+            $this->seedRoles();
+
+            // Ensure Admin role exists.
+            $adminRole = Role::firstOrCreate([
+                'name' => 'Admin',
+                'guard_name' => 'web',
+            ]);
+
+            // Give Admin every existing web permission.
+            $permissions = Permission::where('guard_name', 'web')->get();
+
+            $adminRole->syncPermissions($permissions);
+
+            // Create first tenant administrator.
+            $owner = User::create([
+                'name' => $admin['name'],
+                'email' => strtolower($admin['email']),
+                'password' => Hash::make($admin['password']),
+                'role' => 'admin',
+                'active' => true,
+            ]);
+
+            // Assign Admin role automatically.
+            $owner->assignRole($adminRole);
+
+            // Clear permission cache after assignment.
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+            // End tenant context.
             tenancy()->end();
 
             return $created;
+
         } catch (\Throwable $e) {
             tenancy()->end();
 
             if ($created) {
                 $created->delete();
             }
+
             $this->dropDatabaseIfExists($dbName);
 
             throw $e;
@@ -84,12 +111,11 @@ class CompanyProvisioner
     }
 
     /**
-     * Call your existing role and permission seeder here, otherwise the new
-     * company's staff will get 403 errors on permission-protected pages.
+     * Initialize tenant roles and permissions.
      */
     private function seedRoles(): void
     {
-        // app(\Database\Seeders\Tenant\RolesAndPermissionsSeeder::class)->run();
+        app(\Database\Seeders\Tenant\RolesAndPermissionsSeeder::class)->run();
     }
 
     private function databaseExists(string $name): bool
