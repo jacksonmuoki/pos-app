@@ -568,22 +568,30 @@
     </a>
 
     <div class="nav-label">System</div>
-
-    <a href="#" class="nav-link" title="Settings">
-        <span class="nav-icon">⚙</span> Settings
-    </a>
-    <a href="#" class="nav-link" title="API & integrations">
-        <span class="nav-icon">⟐</span> Integrations
-    </a>
-    <a href="#" class="nav-link" title="Webhooks">
-        <span class="nav-icon">⤳</span> Webhooks
-    </a>
-    <a href="#" class="nav-link" title="System health">
-        <span class="nav-icon">♥</span> System health
-    </a>
-    <a href="#" class="nav-link" title="Backups">
-        <span class="nav-icon">⛁</span> Backups
-    </a>
+<a href="{{ route('super.settings') }}"
+   class="nav-link {{ request()->routeIs('super.settings*') ? 'active' : '' }}" title="Settings">
+    <span class="nav-icon">⚙</span> Settings
+</a>
+<a href="{{ route('super.integrations') }}"
+   class="nav-link {{ request()->routeIs('super.integrations*') ? 'active' : '' }}" title="API & integrations">
+    <span class="nav-icon">⟐</span> Integrations
+</a>
+<a href="{{ route('super.webhooks.index') }}"
+   class="nav-link {{ request()->routeIs('super.webhooks*') ? 'active' : '' }}" title="Webhooks">
+    <span class="nav-icon">⤳</span> Webhooks
+</a>
+<a href="{{ route('super.health') }}"
+   class="nav-link {{ request()->routeIs('super.health*') ? 'active' : '' }}" title="System health">
+    <span class="nav-icon">♥</span> System health
+</a>
+<a href="{{ route('super.backups') }}"
+   class="nav-link {{ request()->routeIs('super.backups*') ? 'active' : '' }}" title="Backups">
+    <span class="nav-icon">⛁</span> Backups
+</a>
+<a href="{{ route('super.activity') }}"
+   class="nav-link {{ request()->routeIs('super.activity*') ? 'active' : '' }}" title="Activity log">
+    <span class="nav-icon">☰</span> Activity
+</a>
 
     <div class="nav-label">Support</div>
 

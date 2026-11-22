@@ -3,9 +3,12 @@
 use App\Http\Controllers\SuperAdmin\ActivityController;
 use App\Http\Controllers\SuperAdmin\AdminController;
 use App\Http\Controllers\SuperAdmin\CompanyController;
+use App\Http\Controllers\SuperAdmin\CompanySettingsController;
 use App\Http\Controllers\SuperAdmin\DashboardController;
 use App\Http\Controllers\SuperAdmin\LoginController;
 use App\Http\Controllers\SuperAdmin\ProfileController;
+use App\Http\Controllers\SuperAdmin\{SettingsController, IntegrationController, WebhookController, HealthController, BackupController};
+
 use App\Http\Middleware\EnsureCentralDomain;
 use App\Http\Middleware\SuperAuthenticate;
 use App\Http\Middleware\SuperGuest;
@@ -35,14 +38,16 @@ Route::prefix('super')->name('super.')->middleware(EnsureCentralDomain::class)->
         Route::get('activity', [ActivityController::class, 'index'])->name('activity');
 
         Route::get('home', fn () => redirect()->route('super.dashboard'))->name('home');
-        
+
         Route::get('profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::patch('profile', [ProfileController::class, 'update'])->name('profile.update');
 
+        // Admin management
         Route::get('admins', [AdminController::class, 'index'])->name('admins.index');
         Route::post('admins', [AdminController::class, 'store'])->name('admins.store');
         Route::delete('admins/{admin}', [AdminController::class, 'destroy'])->whereNumber('admin')->name('admins.destroy');
 
+        // Company management
         Route::get('companies', [CompanyController::class, 'index'])->name('companies.index');
         Route::get('companies/create', [CompanyController::class, 'create'])->name('companies.create');
         Route::post('companies', [CompanyController::class, 'store'])->name('companies.store');
@@ -63,5 +68,36 @@ Route::prefix('super')->name('super.')->middleware(EnsureCentralDomain::class)->
             Route::post('users/{user}/reset-password', [CompanyController::class, 'resetPassword'])->whereNumber('user')->name('companies.users.reset');
             Route::post('users/{user}/impersonate', [CompanyController::class, 'impersonate'])->whereNumber('user')->name('companies.users.impersonate');
         });
+
+        // Platform settings
+        Route::get('settings', [SettingsController::class, 'edit'])->name('settings');
+        Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
+
+        // Per-company settings (currency, payments, SMS, maintenance)
+        Route::prefix('company-settings/{company}')->where(['company' => '[a-z0-9]+'])->group(function () {
+            Route::get('/', [CompanySettingsController::class, 'edit'])->name('company-settings.edit');
+            Route::put('/', [CompanySettingsController::class, 'update'])->name('company-settings.update');
+        });
+
+        // Integrations
+        Route::get('integrations', [IntegrationController::class, 'index'])->name('integrations');
+        Route::put('integrations/{provider}', [IntegrationController::class, 'update'])->name('integrations.update');
+
+        // Webhooks
+        Route::get('webhooks', [WebhookController::class, 'index'])->name('webhooks.index');
+        Route::post('webhooks', [WebhookController::class, 'store'])->name('webhooks.store');
+        Route::post('webhooks/{webhook}/toggle', [WebhookController::class, 'toggle'])->name('webhooks.toggle');
+        Route::post('webhooks/{webhook}/test', [WebhookController::class, 'test'])->middleware('throttle:10,1')->name('webhooks.test');
+        Route::delete('webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('webhooks.destroy');
+        Route::post('webhooks/deliveries/{delivery}/resend', [WebhookController::class, 'resend'])->name('webhooks.resend');
+
+        // System health
+        Route::get('health', [HealthController::class, 'index'])->name('health');
+
+        // Backups
+        Route::get('backups', [BackupController::class, 'index'])->name('backups');
+        Route::post('backups', [BackupController::class, 'store'])->middleware('throttle:10,1')->name('backups.store');
+        Route::get('backups/{backup}/download', [BackupController::class, 'download'])->name('backups.download');
+        Route::delete('backups/{backup}', [BackupController::class, 'destroy'])->name('backups.destroy');
     });
 });
