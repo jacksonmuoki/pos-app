@@ -28,3 +28,5 @@ Thumbs.db
 schema.sql
 
 /storage/tenant*/
+
+/storage/app/private/backups/
