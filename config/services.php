@@ -28,6 +28,11 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'backup' => [
+    'mysqldump' => env('MYSQLDUMP_PATH', 'mysqldump'),
+    'retention_days' => (int) env('BACKUP_RETENTION_DAYS', 14),
+],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

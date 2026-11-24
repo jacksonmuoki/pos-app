@@ -747,8 +747,6 @@ button:disabled{cursor:not-allowed}
         height:100px;
     }
 
-}
-
 
 /* Print: the Print button prints only the receipt through its own frame */
 @page{margin:0;size:{{ $paper }}mm auto}
@@ -795,25 +793,21 @@ button:disabled{cursor:not-allowed}
         <input id="tableNo" name="table_no" maxlength="20" placeholder="Table or customer (F2)" aria-label="Table or customer">
         <button class="btn primary sm" type="submit">New order</button>
       </form>
-      <div class="chips" aria-label="My orders">
-        @if($openOrders->isEmpty() && $heldOrders->isEmpty())
-          <span class="nochip">No open orders. Tap a product to start one.</span>
-        @endif
-        @foreach($openOrders as $o)
-          @php $od = max(0, $o->total - $o->discount); @endphp
-          <a class="chip{{ $selectedId === (int) $o->id ? ' on' : '' }}" href="{{ route('cashier.index', ['order' => $o->id]) }}">
-            <b>#{{ $o->id }}{{ $o->table_no ? ' · ' . $o->table_no : '' }}</b>
-            <small>{{ $o->item_count }} items · {{ \Illuminate\Support\Carbon::parse($o->created_at)->diffForHumans(null, true, true) }} · <em class="num">{{ $m($od) }}</em></small>
-          </a>
-        @endforeach
-        @foreach($heldOrders as $o)
-          @php $od = max(0, $o->total - $o->discount); @endphp
-          <a class="chip held{{ $selectedId === (int) $o->id ? ' on' : '' }}" href="{{ route('cashier.index', ['order' => $o->id]) }}">
+      <div class="chips" aria-label="My held orders">
+    @if($heldOrders->isEmpty())
+        <span class="nochip">No held orders.</span>
+    @endif
+
+    @foreach($heldOrders as $o)
+        @php $od = max(0, $o->total - $o->discount); @endphp
+
+        <a class="chip held{{ $selectedId === (int) $o->id ? ' on' : '' }}"
+           href="{{ route('cashier.index', ['order' => $o->id]) }}">
             <b>On hold · #{{ $o->id }}{{ $o->table_no ? ' · ' . $o->table_no : '' }}</b>
             <small>{{ $o->item_count }} items · <em class="num">{{ $m($od) }}</em></small>
-          </a>
-        @endforeach
-      </div>
+        </a>
+    @endforeach
+</div>
     </div>
 
     <div class="tools">
@@ -1446,22 +1440,63 @@ button:disabled{cursor:not-allowed}
   const RC_CSS = @json($rcCss);
   const PAPER  = @json($paper);
   function doPrint() {
-    const src = $('#rcPaper'); if (!src) return;
-    const old = $('#printFrame'); if (old) old.remove();
-    const f = document.createElement('iframe');
-    f.id = 'printFrame'; f.setAttribute('aria-hidden', 'true'); f.title = 'Receipt';
-    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-    document.body.appendChild(f);
-    const d = f.contentDocument;
-    d.open();
-    d.write('<!doctype html><html><head><meta charset="utf-8"><title>Receipt</title><style>' + RC_CSS +
-      '@page{margin:0;size:' + PAPER + 'mm auto}html,body{margin:0;padding:0;background:#fff}' +
-      '.rc{margin:0;box-shadow:none;max-width:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>' +
-      src.outerHTML + '</body></html>');
-    d.close();
-    setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { window.print(); } }, 250);
+  const src = $('#rcPaper');
+  if (!src) return;
+
+  const old = $('#printFrame');
+  if (old) old.remove();
+
+  const f = document.createElement('iframe');
+  f.id = 'printFrame';
+  f.setAttribute('aria-hidden', 'true');
+  f.title = 'Receipt';
+  f.style.cssText =
+    'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+
+  document.body.appendChild(f);
+
+  const d = f.contentDocument;
+  d.open();
+
+  d.write(
+    '<!doctype html><html><head><meta charset="utf-8"><title>Receipt</title><style>' +
+    RC_CSS +
+    '@page{margin:0;size:' + PAPER + 'mm auto}html,body{margin:0;padding:0;background:#fff}' +
+    '.rc{margin:0;box-shadow:none;max-width:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '</style></head><body>' +
+    src.outerHTML +
+    '</body></html>'
+  );
+
+  d.close();
+
+  let returned = false;
+
+  function returnToCashier() {
+    if (returned) return;
+    returned = true;
+    window.location.replace(@json(route('cashier.index')));
   }
-  const printBtn = $('#printBtn');
+
+  f.contentWindow.onafterprint = returnToCashier;
+
+  setTimeout(() => {
+    try {
+      f.contentWindow.focus();
+      f.contentWindow.print();
+
+      // Fallback for browsers that fail to fire afterprint.
+      f.contentWindow.addEventListener('afterprint', returnToCashier, { once: true });
+    } catch (e) {
+      try {
+        window.focus();
+        window.print();
+      } catch (err) {
+        console.error('Receipt printing failed:', err);
+      }
+    }
+  }, 250);
+}
   if (printBtn) printBtn.addEventListener('click', doPrint);
   if (AUTO_PRINT && HAS_RECEIPT) window.addEventListener('load', () => setTimeout(doPrint, 400));
 

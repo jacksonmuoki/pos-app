@@ -6,7 +6,16 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#14532d">
 
-    <title>@yield('title', 'Dashboard') | {{ config('app.name', 'POS') }}</title>
+    @php
+        // Company business name (set in Settings), falling back to the app name.
+        try {
+            $shopName = \App\Support\CompanySettings::get('business_name') ?: config('app.name', 'POS');
+        } catch (\Throwable $e) {
+            $shopName = config('app.name', 'POS');
+        }
+    @endphp
+
+    <title>@yield('title', 'Dashboard') | {{ $shopName }}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,9 +50,7 @@
             --shadow: 0 5px 20px rgba(0, 0, 0, .18);
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -53,21 +60,12 @@
             font-size: 14px;
         }
 
-        a {
-            color: inherit;
-            text-decoration: none;
-        }
+        a { color: inherit; text-decoration: none; }
+        button, input, textarea, select { font: inherit; }
 
-        button, input {
-            font: inherit;
-        }
-
-        .app-shell {
-            min-height: 100vh;
-        }
+        .app-shell { min-height: 100vh; }
 
         /* SIDEBAR */
-
         .sidebar {
             position: fixed;
             inset: 0 auto 0 0;
@@ -101,11 +99,7 @@
             font-weight: 800;
         }
 
-        .brand-name {
-            font-size: 17px;
-            font-weight: 800;
-            letter-spacing: -.5px;
-        }
+        .brand-name { font-size: 17px; font-weight: 800; letter-spacing: -.5px; }
 
         .brand-caption {
             display: block;
@@ -114,15 +108,9 @@
             margin-top: 3px;
         }
 
-        .sidebar-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 18px 13px;
-        }
+        .sidebar-content { flex: 1; overflow-y: auto; padding: 18px 13px; }
 
-        .nav-section {
-            margin-bottom: 24px;
-        }
+        .nav-section { margin-bottom: 24px; }
 
         .nav-heading {
             padding: 0 11px;
@@ -147,10 +135,7 @@
             transition: .2s;
         }
 
-        .nav-link:hover {
-            background: var(--surface-soft);
-            color: var(--primary);
-        }
+        .nav-link:hover { background: var(--surface-soft); color: var(--primary); }
 
         .nav-link.active {
             background: var(--primary-light);
@@ -158,29 +143,11 @@
             font-weight: 700;
         }
 
-        [data-theme="dark"] .nav-link.active {
-            color: #86efac;
-        }
+        [data-theme="dark"] .nav-link.active { color: #86efac; }
 
-        .nav-icon {
-            width: 21px;
-            text-align: center;
-            font-size: 16px;
-        }
+        .nav-icon { width: 21px; text-align: center; font-size: 16px; }
 
-        .nav-badge {
-            margin-left: auto;
-            padding: 3px 7px;
-            border-radius: 20px;
-            background: var(--surface-soft);
-            color: var(--muted);
-            font-size: 10px;
-        }
-
-        .sidebar-bottom {
-            padding: 15px;
-            border-top: 1px solid var(--border);
-        }
+        .sidebar-bottom { padding: 15px; border-top: 1px solid var(--border); }
 
         .company-card {
             padding: 12px;
@@ -189,22 +156,11 @@
             border-radius: 11px;
         }
 
-        .company-card strong {
-            display: block;
-            font-size: 12px;
-            margin-bottom: 4px;
-        }
-
-        .company-card small {
-            color: var(--muted);
-        }
+        .company-card strong { display: block; font-size: 12px; margin-bottom: 4px; }
+        .company-card small { color: var(--muted); }
 
         /* MAIN AREA */
-
-        .main-wrapper {
-            min-height: 100vh;
-            margin-left: var(--sidebar-width);
-        }
+        .main-wrapper { min-height: 100vh; margin-left: var(--sidebar-width); }
 
         .topbar {
             position: sticky;
@@ -220,17 +176,9 @@
             border-bottom: 1px solid var(--border);
         }
 
-        .topbar-left,
-        .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 13px;
-        }
+        .topbar-left, .topbar-right { display: flex; align-items: center; gap: 13px; }
 
-        .page-context {
-            font-size: 13px;
-            font-weight: 700;
-        }
+        .page-context { font-size: 13px; font-weight: 700; }
 
         .topbar-search {
             width: 260px;
@@ -243,9 +191,7 @@
             outline: none;
         }
 
-        .topbar-search:focus {
-            border-color: var(--primary);
-        }
+        .topbar-search:focus { border-color: var(--primary); }
 
         .icon-button {
             width: 38px;
@@ -259,15 +205,9 @@
             cursor: pointer;
         }
 
-        .icon-button:hover {
-            background: var(--surface-soft);
-        }
+        .icon-button:hover { background: var(--surface-soft); }
 
-        .user-menu {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-        }
+        .user-menu { display: flex; align-items: center; gap: 9px; }
 
         .user-avatar {
             width: 36px;
@@ -280,24 +220,12 @@
             font-weight: 800;
         }
 
-        [data-theme="dark"] .user-avatar {
-            color: #86efac;
-        }
+        [data-theme="dark"] .user-avatar { color: #86efac; }
 
-        .user-details strong {
-            display: block;
-            font-size: 12px;
-        }
+        .user-details strong { display: block; font-size: 12px; }
+        .user-details small { display: block; color: var(--muted); margin-top: 3px; }
 
-        .user-details small {
-            display: block;
-            color: var(--muted);
-            margin-top: 3px;
-        }
-
-        .mobile-menu {
-            display: none;
-        }
+        .mobile-menu { display: none; }
 
         .content {
             max-width: 1600px;
@@ -307,7 +235,6 @@
         }
 
         /* ALERTS */
-
         .alert {
             padding: 13px 16px;
             border-radius: 10px;
@@ -315,32 +242,44 @@
             font-weight: 600;
         }
 
-        .alert-success {
-            color: #166534;
-            background: #dcfce7;
-            border: 1px solid #bbf7d0;
+        .alert-success { color: #166534; background: #dcfce7; border: 1px solid #bbf7d0; }
+        .alert-danger  { color: #991b1b; background: #fee2e2; border: 1px solid #fecaca; }
+
+        [data-theme="dark"] .alert-success { color: #bbf7d0; background: #193c27; border-color: #285c3a; }
+        [data-theme="dark"] .alert-danger  { color: #fecaca; background: #451c1c; border-color: #713333; }
+
+        /* FORMS AND CARDS (used by settings pages) */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 22px;
+            margin-bottom: 20px;
         }
 
-        .alert-danger {
-            color: #991b1b;
-            background: #fee2e2;
-            border: 1px solid #fecaca;
+        .card input:not([type=checkbox]):not([type=radio]),
+        .card textarea,
+        .card select {
+            background: var(--surface-soft);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
         }
 
-        [data-theme="dark"] .alert-success {
-            color: #bbf7d0;
-            background: #193c27;
-            border-color: #285c3a;
+        .card button[type=submit] {
+            background: var(--primary);
+            color: #fff;
+            border: 0;
+            border-radius: 9px;
+            padding: 10px 18px;
+            font-weight: 700;
+            cursor: pointer;
         }
 
-        [data-theme="dark"] .alert-danger {
-            color: #fecaca;
-            background: #451c1c;
-            border-color: #713333;
-        }
+        .card button[type=submit]:hover { background: var(--primary-dark); }
 
         /* FOOTER */
-
         .app-footer {
             padding: 18px 28px;
             border-top: 1px solid var(--border);
@@ -352,26 +291,13 @@
             flex-wrap: wrap;
         }
 
-        .sidebar-overlay {
-            display: none;
-        }
+        .sidebar-overlay { display: none; }
 
-        @media(max-width: 900px) {
-            .sidebar {
-                transform: translateX(-100%);
-            }
-
-            .sidebar.open {
-                transform: translateX(0);
-            }
-
-            .main-wrapper {
-                margin-left: 0;
-            }
-
-            .mobile-menu {
-                display: grid;
-            }
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-wrapper { margin-left: 0; }
+            .mobile-menu { display: grid; }
 
             .sidebar-overlay.show {
                 display: block;
@@ -381,29 +307,14 @@
                 background: rgba(0, 0, 0, .45);
             }
 
-            .content {
-                padding: 20px;
-            }
+            .content { padding: 20px; }
         }
 
-        @media(max-width: 600px) {
-            .topbar {
-                padding: 0 14px;
-            }
-
-            .topbar-search,
-            .user-details,
-            .page-context {
-                display: none;
-            }
-
-            .content {
-                padding: 16px;
-            }
-
-            .app-footer {
-                padding: 16px;
-            }
+        @media (max-width: 600px) {
+            .topbar { padding: 0 14px; }
+            .topbar-search, .user-details, .page-context { display: none; }
+            .content { padding: 16px; }
+            .app-footer { padding: 16px; }
         }
     </style>
 
@@ -413,7 +324,6 @@
 <body>
 @php
     $currentUser = auth()->user();
-    $shopName = config('app.name', 'POS');
 
     $userName = $currentUser->name ?? 'User';
     $userRole = ucfirst($currentUser->role ?? 'Staff');
@@ -436,7 +346,7 @@
     <aside class="sidebar" id="sidebar">
 
         <a href="{{ route('dashboard') }}" class="brand">
-            <span class="brand-mark">P</span>
+            <span class="brand-mark">{{ strtoupper(substr($shopName, 0, 1)) }}</span>
             <span>
                 <span class="brand-name">{{ $shopName }}</span>
                 <span class="brand-caption">BUSINESS MANAGEMENT</span>
@@ -450,19 +360,17 @@
 
                 <a href="{{ route('dashboard') }}"
                    class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                    <span class="nav-icon">⌂</span>
-                    Dashboard
+                    <span class="nav-icon">⌂</span> Dashboard
                 </a>
 
-                <a href="{{ route('dashboard') }}"
-                   class="nav-link">
-                    <span class="nav-icon">▣</span>
-                    Point of Sale
+                <a href="{{ route('cashier.index') }}"
+                   class="nav-link {{ request()->routeIs('cashier.*') ? 'active' : '' }}">
+                    <span class="nav-icon">▣</span> Point of Sale
                 </a>
             </div>
 
             <div class="nav-section">
-               <div class="nav-section">Trade</div>
+                <div class="nav-heading">Trade</div>
 
                 <a href="{{ route('sales.index') }}" class="nav-link {{ request()->routeIs('sales.*') ? 'active' : '' }}">
                     <span class="nav-icon">↗</span> Sales
@@ -478,63 +386,53 @@
             <div class="nav-section">
                 <div class="nav-heading">Catalogue</div>
 
-                <a href="{{ route('products.create') }}" class="nav-link">
-                    <span class="nav-icon">+</span>
-                   Add Product
+                <a href="{{ route('products.create') }}" class="nav-link {{ request()->routeIs('products.create') ? 'active' : '' }}">
+                    <span class="nav-icon">+</span> Add Product
                 </a>
-
-                <a href="{{ route('products.index') }}" class="nav-link">
-                    <span class="nav-icon">□</span>
-                    Products
+                <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.index', 'products.edit', 'products.show') ? 'active' : '' }}">
+                    <span class="nav-icon">□</span> Products
                 </a>
-                <a href="{{ route('categories.create') }}" class="nav-link">
-                    <span class="nav-icon">▦</span>
-                    Categories
+                <a href="{{ route('categories.create') }}" class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
+                    <span class="nav-icon">▦</span> Categories
                 </a>
-
-                <a href="{{ route('brands.create') }}" class="nav-link">
-                    <span class="nav-icon">◇</span>
-                    Brands
+                <a href="{{ route('brands.create') }}" class="nav-link {{ request()->routeIs('brands.*') ? 'active' : '' }}">
+                    <span class="nav-icon">◇</span> Brands
                 </a>
             </div>
 
             <div class="nav-section">
-               <div class="nav-section">Inventory</div>
-                    <a href="{{ route('stock.index') }}" class="nav-link {{ request()->routeIs('stock.*') ? 'active' : '' }}">
-                        <span class="nav-icon">▥</span> Stock Management
-                    </a>
-                    <a href="{{ route('adjustments.index') }}" class="nav-link {{ request()->routeIs('adjustments.*') ? 'active' : '' }}">
-                        <span class="nav-icon">⇄</span> Stock Adjustments
-                    </a>
-                    <a href="{{ route('suppliers.index') }}" class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
-                        <span class="nav-icon">♧</span> Suppliers
-                    </a>
-                    <a href="{{ route('purchases.index') }}" class="nav-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}">
-                        <span class="nav-icon">▣</span> Purchases
-                    </a>
+                <div class="nav-heading">Inventory</div>
+
+                <a href="{{ route('stock.index') }}" class="nav-link {{ request()->routeIs('stock.*') ? 'active' : '' }}">
+                    <span class="nav-icon">▥</span> Stock Management
+                </a>
+                <a href="{{ route('adjustments.index') }}" class="nav-link {{ request()->routeIs('adjustments.*') ? 'active' : '' }}">
+                    <span class="nav-icon">⇄</span> Stock Adjustments
+                </a>
+                <a href="{{ route('suppliers.index') }}" class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
+                    <span class="nav-icon">♧</span> Suppliers
+                </a>
+                <a href="{{ route('purchases.index') }}" class="nav-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}">
+                    <span class="nav-icon">▣</span> Purchases
+                </a>
             </div>
 
             <div class="nav-section">
                 <div class="nav-heading">Finance</div>
 
                 <a href="{{ route('dashboard') }}" class="nav-link">
-                    <span class="nav-icon">K</span>
-                    Payments
+                    <span class="nav-icon">K</span> Payments
                 </a>
-
                 <a href="{{ route('dashboard') }}" class="nav-link">
-                    <span class="nav-icon">−</span>
-                    Expenses
+                    <span class="nav-icon">−</span> Expenses
                 </a>
-
                 <a href="{{ route('dashboard') }}" class="nav-link">
-                    <span class="nav-icon">▤</span>
-                    Cash Management
+                    <span class="nav-icon">▤</span> Cash Management
                 </a>
             </div>
 
             <div class="nav-section">
-               <div class="nav-section">Business Intelligence</div>
+                <div class="nav-heading">Business Intelligence</div>
 
                 <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                     <span class="nav-icon">▥</span> Reports
@@ -550,19 +448,24 @@
                 @if($canManageStaff && \Illuminate\Support\Facades\Route::has('staff.index'))
                     <a href="{{ route('staff.index') }}"
                        class="nav-link {{ request()->routeIs('staff.*') ? 'active' : '' }}">
-                        <span class="nav-icon">♙</span>
-                        Staff Management
+                        <span class="nav-icon">♙</span> Staff Management
                     </a>
                 @endif
 
-                <a href="{{ route('settings.index') }}" class="nav-link">
-                    <span class="nav-icon">⚙</span>
-                    Company Settings
-                </a>
+                @can('manage settings')
+                    <a href="{{ route('settings.edit') }}"
+                       class="nav-link {{ request()->routeIs('settings.edit', 'settings.update') ? 'active' : '' }}">
+                        <span class="nav-icon">⚙</span> Company Settings
+                    </a>
+
+                    <a href="{{ route('settings.roles.index') }}"
+                       class="nav-link {{ request()->routeIs('settings.roles.*') ? 'active' : '' }}">
+                        <span class="nav-icon">♔</span> Roles &amp; Permissions
+                    </a>
+                @endcan
 
                 <a href="{{ route('dashboard') }}" class="nav-link">
-                    <span class="nav-icon">▣</span>
-                    Branches
+                    <span class="nav-icon">▣</span> Branches
                 </a>
             </div>
 
@@ -582,29 +485,16 @@
         <header class="topbar">
 
             <div class="topbar-left">
-                <button class="icon-button mobile-menu"
-                        id="mobileMenu"
-                        type="button"
-                        aria-label="Open navigation">
-                    ☰
-                </button>
-
+                <button class="icon-button mobile-menu" id="mobileMenu" type="button" aria-label="Open navigation">☰</button>
                 <span class="page-context">@yield('page-heading', 'Company Workspace')</span>
             </div>
 
             <div class="topbar-right">
 
-                <input type="search"
-                       class="topbar-search"
-                       id="globalSearch"
+                <input type="search" class="topbar-search" id="globalSearch"
                        placeholder="Search workspace... (Ctrl + K)">
 
-                <button class="icon-button"
-                        id="themeToggle"
-                        type="button"
-                        title="Toggle theme">
-                    ◐
-                </button>
+                <button class="icon-button" id="themeToggle" type="button" title="Toggle theme">◐</button>
 
                 <div class="user-menu">
                     <div class="user-avatar">{{ $initials ?: 'U' }}</div>
@@ -617,11 +507,7 @@
 
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button class="icon-button"
-                            type="submit"
-                            title="Logout">
-                        ⇥
-                    </button>
+                    <button class="icon-button" type="submit" title="Logout">⇥</button>
                 </form>
 
             </div>
@@ -631,14 +517,22 @@
         <main class="content" id="main">
 
             @if(session('success'))
-                <div class="alert alert-success" id="flashMessage">
-                    {{ session('success') }}
-                </div>
+                <div class="alert alert-success flash">{{ session('success') }}</div>
+            @endif
+
+            @if(session('status'))
+                <div class="alert alert-success flash">{{ session('status') }}</div>
             @endif
 
             @if(session('error'))
-                <div class="alert alert-danger" id="flashMessage">
-                    {{ session('error') }}
+                <div class="alert alert-danger flash">{{ session('error') }}</div>
+            @endif
+
+            @if($errors->any())
+                <div class="alert alert-danger">
+                    @foreach($errors->all() as $error)
+                        <div>{{ $error }}</div>
+                    @endforeach
                 </div>
             @endif
 
@@ -664,16 +558,14 @@
     const searchInput = document.getElementById('globalSearch');
 
     // Theme
-    const savedTheme = localStorage.getItem('pos-admin-theme') || 'light';
+    let savedTheme = 'light';
+    try { savedTheme = localStorage.getItem('pos-admin-theme') || 'light'; } catch (e) {}
     root.setAttribute('data-theme', savedTheme);
 
     themeButton?.addEventListener('click', () => {
-        const nextTheme = root.getAttribute('data-theme') === 'dark'
-            ? 'light'
-            : 'dark';
-
-        root.setAttribute('data-theme', nextTheme);
-        localStorage.setItem('pos-admin-theme', nextTheme);
+        const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('pos-admin-theme', next); } catch (e) {}
     });
 
     // Mobile navigation
@@ -702,17 +594,14 @@
         }
     });
 
-    // Flash messages
-    const flash = document.getElementById('flashMessage');
-
-    if (flash) {
+    // Flash messages fade out
+    document.querySelectorAll('.flash').forEach(flash => {
         setTimeout(() => {
             flash.style.transition = 'opacity .3s ease';
             flash.style.opacity = '0';
-
             setTimeout(() => flash.remove(), 350);
         }, 4500);
-    }
+    });
 })();
 </script>
 

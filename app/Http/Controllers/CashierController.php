@@ -130,7 +130,7 @@ class CashierController extends Controller
             'receiptOrd'  => $receiptOrd,
             'receiptId'   => $receiptId,
             'autoPrint'   => $autoPrint || (bool) $request->query('print'),
-            'closeUrl'    => $selectedId ? route('cashier.index', ['order' => $selectedId]) : route('cashier.index'),
+            'closeUrl' => route('cashier.index'),
         ]);
     }
 
@@ -231,7 +231,10 @@ class CashierController extends Controller
                     if (! $order || $order->status !== 'open') return $this->go($target, 'error', 'This order cannot be held.');
                     if ($block = $this->editBlock($order)) return $this->go($target, 'error', $block);
 
-                    DB::table('orders')->where('id', $oid)->update(['status' => 'held']);
+                    DB::table('orders')->where('id', $oid)->update([
+    'status' => 'held',
+    'updated_at' => now(),
+]);
                     return $this->go(route('cashier.index'), 'success', "Order #$oid put on hold.");
 
                 case 'resume':
@@ -510,13 +513,28 @@ private function deductOrderStock(int $oid, int $userId): ?string
     }
 
     private function listOrders(string $status)
-    {
-        return DB::table('orders as o')
-            ->where('o.user_id', auth()->id())->where('o.status', $status)
-            ->select('o.id', 'o.table_no', 'o.total', 'o.discount', 'o.created_at')
-            ->selectRaw('(SELECT COALESCE(SUM(oi.qty), 0) FROM order_items oi WHERE oi.order_id = o.id) AS item_count')
-            ->orderBy('o.created_at')->limit(60)->get();
+{
+    $query = DB::table('orders as o')
+        ->where('o.user_id', auth()->id())
+        ->where('o.status', $status)
+        ->select(
+            'o.id',
+            'o.table_no',
+            'o.total',
+            'o.discount',
+            'o.created_at',
+            'o.updated_at'
+        )
+        ->selectRaw('(SELECT COALESCE(SUM(oi.qty), 0) FROM order_items oi WHERE oi.order_id = o.id) AS item_count');
+
+    if ($status === 'held') {
+        $query->orderByDesc('o.updated_at');
+    } else {
+        $query->orderBy('o.created_at');
     }
+
+    return $query->limit(60)->get();
+}
 
     private function recentPaid(int $uid)
     {

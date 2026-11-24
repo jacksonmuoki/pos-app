@@ -1,737 +1,1221 @@
+
 @extends('super.layout')
 
-@section('title', 'Platform Overview')
-@section('breadcrumb', 'Overview')
-
 @section('content')
+@php
+    /*
+    |--------------------------------------------------------------------------
+    | Safe dashboard defaults
+    |--------------------------------------------------------------------------
+    | Missing controller values will display as zero or empty data.
+    */
 
-<div class="page-heading">
-    <div>
-        <h1>Platform overview</h1>
-        <p>Monitor your POS platform and manage registered businesses.</p>
-    </div>
+    $totalCompanies    = (int) ($totalCompanies ?? 0);
+    $activeCompanies   = (int) ($activeCompanies ?? 0);
+    $suspendedCompanies = (int) ($suspendedCompanies ?? 0);
 
-    <a href="{{ route('super.companies.create') }}" class="btn btn-primary">
-        + Register company
-    </a>
-</div>
+    $totalUsers        = (int) ($totalUsers ?? 0);
+    $totalProducts     = (int) ($totalProducts ?? 0);
+    $totalOrders       = (int) ($totalOrders ?? 0);
+    $todayOrders       = (int) ($todayOrders ?? 0);
+    $lowStockProducts  = (int) ($lowStockProducts ?? 0);
+    $pendingCompanies  = (int) ($pendingCompanies ?? 0);
 
-<div class="dashboard-grid">
-    <div class="stat-card">
-        <div class="stat-top">
-            <span>Total companies</span>
-            <div class="stat-icon green">▦</div>
+    $totalRevenue      = (float) ($totalRevenue ?? 0);
+    $todayRevenue      = (float) ($todayRevenue ?? 0);
+    $monthlyRevenueTotal = (float) ($monthlyRevenueTotal ?? 0);
+
+    $recentCompanies = collect($recentCompanies ?? []);
+
+    $activeRate = $totalCompanies > 0
+        ? round(($activeCompanies / $totalCompanies) * 100)
+        : 0;
+
+    $suspendedRate = $totalCompanies > 0
+        ? round(($suspendedCompanies / $totalCompanies) * 100)
+        : 0;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Chart data
+    |--------------------------------------------------------------------------
+    | Expected monthlyRevenue format:
+    | ['labels' => ['Jan', 'Feb'], 'values' => [1000, 2000]]
+    */
+
+    $monthlyLabels = data_get($monthlyRevenue ?? [], 'labels', [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ]);
+
+    $monthlyValues = data_get($monthlyRevenue ?? [], 'values', array_fill(0, 12, 0));
+
+    $companyPerformance = collect($companyPerformance ?? []);
+
+    $companyChartLabels = $companyPerformance
+        ->pluck('name')
+        ->values()
+        ->all();
+
+    $companyChartValues = $companyPerformance
+        ->pluck('revenue')
+        ->map(fn ($value) => (float) $value)
+        ->values()
+        ->all();
+
+    $formatMoney = fn ($amount) => 'KSh ' . number_format((float) $amount, 2);
+@endphp
+
+<div class="platform-dashboard">
+
+    {{-- HEADER --}}
+    <div class="pd-header">
+        <div>
+            <span class="pd-eyebrow">PLATFORM CONTROL CENTER</span>
+            <h1>Dashboard Overview</h1>
+            <p>Monitor your companies, business activity and platform performance.</p>
         </div>
-        <div class="stat-number">{{ number_format($totalCompanies) }}</div>
-        <div class="stat-caption">All registered businesses</div>
-    </div>
 
-    <div class="stat-card">
-        <div class="stat-top">
-            <span>Active companies</span>
-            <div class="stat-icon blue">✓</div>
-        </div>
-        <div class="stat-number">{{ number_format($activeCompanies) }}</div>
-        <div class="stat-caption">Currently active tenants</div>
-    </div>
+        <div class="pd-header-actions">
+            <a href="{{ route('super.activity') }}" class="pd-btn pd-btn-light">
+                <i class="fas fa-history"></i>
+                Activity Logs
+            </a>
 
-    <div class="stat-card">
-        <div class="stat-top">
-            <span>Suspended companies</span>
-            <div class="stat-icon red">⊘</div>
-        </div>
-        <div class="stat-number">{{ number_format($suspendedCompanies) }}</div>
-        <div class="stat-caption">Restricted tenant accounts</div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-top">
-            <span>Platform status</span>
-            <div class="stat-icon green">●</div>
-        </div>
-        <div class="stat-number" style="font-size:23px; letter-spacing:-0.3px;">Operational</div>
-        <div class="stat-caption">Application status indicator</div>
-    </div>
-</div>
-
-<div class="dashboard-columns">
-
-    <section class="panel">
-        <div class="panel-heading">
-            <div>
-                <h3>Recently registered companies</h3>
-                <p>Your latest tenant registrations</p>
-            </div>
-            <a href="{{ route('super.companies.index') }}" class="text-link">
-                View all →
+            <a href="{{ route('super.companies.create') }}" class="pd-btn pd-btn-primary">
+                <i class="fas fa-plus"></i>
+                Add Company
             </a>
         </div>
+    </div>
 
-        <div class="company-list">
-            @forelse($recentCompanies as $company)
-                <div class="company-row">
-                    <div class="company-symbol">
-                        {{ strtoupper(substr($company->name ?? $company->id, 0, 1)) }}
-                    </div>
+    <div class="pd-stats-grid">
 
-                    <div class="company-info">
-                        <strong>{{ $company->name ?? $company->id }}</strong>
-                        <span>{{ $company->id }}</span>
-                    </div>
-
-                    <div class="company-status">
-                        @if($company->suspended)
-                            <span class="status-badge suspended">Suspended</span>
-                        @else
-                            <span class="status-badge active">Active</span>
-                        @endif
-                    </div>
-
-                    <div class="company-date">
-                        {{ $company->created_at?->format('d M Y') ?? '—' }}
-                    </div>
-                </div>
-            @empty
-                <div class="empty-state">
-                    <div class="empty-icon">▦</div>
-                    <strong>No companies registered yet</strong>
-                    <p>Register your first company to get started.</p>
-                    <a href="{{ route('super.companies.create') }}" class="btn">
-                        Register company
-                    </a>
-                </div>
-            @endforelse
+        <div class="pd-stat-card">
+            <div class="pd-stat-top">
+                <span>Total Companies</span>
+                <div class="pd-stat-icon green"><i class="fas fa-building"></i></div>
+            </div>
+            <h3>{{ number_format($totalCompanies) }}</h3>
+            <small>Registered companies</small>
         </div>
-    </section>
 
-    <section class="panel quick-panel">
-        <div class="panel-heading">
+        <div class="pd-stat-card">
+            <div class="pd-stat-top">
+                <span>Active Companies</span>
+                <div class="pd-stat-icon blue"><i class="fas fa-check-circle"></i></div>
+            </div>
+            <h3>{{ number_format($activeCompanies) }}</h3>
+            <small>{{ $activeRate }}% of all companies</small>
+        </div>
+
+        <div class="pd-stat-card">
+            <div class="pd-stat-top">
+                <span>Suspended Companies</span>
+                <div class="pd-stat-icon red"><i class="fas fa-ban"></i></div>
+            </div>
+            <h3>{{ number_format($suspendedCompanies) }}</h3>
+            <small>{{ $suspendedRate }}% of all companies</small>
+        </div>
+
+        <div class="pd-stat-card">
+            <div class="pd-stat-top">
+                <span>Pending Companies</span>
+                <div class="pd-stat-icon amber"><i class="fas fa-clock"></i></div>
+            </div>
+            <h3>{{ number_format($pendingCompanies) }}</h3>
+            <small>Awaiting attention</small>
+        </div>
+
+    </div>
+
+    {{-- BUSINESS STATISTICS --}}
+    <div class="pd-section-heading">
+        <div>
+            <h2>Business Performance</h2>
+            <p>Combined figures from all companies, where available.</p>
+        </div>
+    </div>
+
+    <div class="pd-stats-grid pd-business-grid">
+
+        <div class="pd-stat-card">
+            <div class="pd-stat-top">
+                <span>Total Users</span>
+                <div class="pd-stat-icon purple"><i class="fas fa-users"></i></div>
+            </div>
+            <h3>{{ number_format($totalUsers) }}</h3>
+            <small>Users across companies</small>
+        </div>
+
+        <div class="pd-stat-card">
+            <div class="pd-stat-top">
+                <span>Total Products</span>
+                <div class="pd-stat-icon cyan"><i class="fas fa-boxes"></i></div>
+            </div>
+            <h3>{{ number_format($totalProducts) }}</h3>
+            <small>Products registered</small>
+        </div>
+
+        <div class="pd-stat-card">
+            <div class="pd-stat-top">
+                <span>Total Orders</span>
+                <div class="pd-stat-icon blue"><i class="fas fa-shopping-cart"></i></div>
+            </div>
+            <h3>{{ number_format($totalOrders) }}</h3>
+            <small>Orders across companies</small>
+        </div>
+
+        <div class="pd-stat-card">
+            <div class="pd-stat-top">
+                <span>Low Stock Items</span>
+                <div class="pd-stat-icon amber"><i class="fas fa-exclamation-triangle"></i></div>
+            </div>
+            <h3>{{ number_format($lowStockProducts) }}</h3>
+            <small>Items requiring attention</small>
+        </div>
+
+    </div>
+
+    {{-- REVENUE AND TODAY --}}
+    <div class="pd-highlight-grid">
+
+        <div class="pd-highlight-card">
+            <div class="pd-highlight-icon">
+                <i class="fas fa-wallet"></i>
+            </div>
             <div>
-                <h3>Quick actions</h3>
-                <p>Common platform operations</p>
+                <span>Total Platform Revenue</span>
+                <h2>{{ $formatMoney($totalRevenue) }}</h2>
+                <small>Combined company revenue, if supplied</small>
             </div>
         </div>
 
-        <a href="{{ route('super.companies.create') }}" class="quick-action">
-            <div class="quick-icon">＋</div>
-            <div>
-                <strong>Register a company</strong>
-                <span>Create a new tenant workspace</span>
+        <div class="pd-highlight-card">
+            <div class="pd-highlight-icon today">
+                <i class="fas fa-calendar-day"></i>
             </div>
-            <b>→</b>
+            <div>
+                <span>Today's Revenue</span>
+                <h2>{{ $formatMoney($todayRevenue) }}</h2>
+                <small>Revenue recorded today, if supplied</small>
+            </div>
+        </div>
+
+        <div class="pd-highlight-card">
+            <div class="pd-highlight-icon orders">
+                <i class="fas fa-receipt"></i>
+            </div>
+            <div>
+                <span>Today's Orders</span>
+                <h2>{{ number_format($todayOrders) }}</h2>
+                <small>Orders recorded today</small>
+            </div>
+        </div>
+
+    </div>
+
+    {{-- CHARTS --}}
+    <div class="pd-section-heading">
+        <div>
+            <h2>Platform Analytics</h2>
+            <p>Revenue trends and company performance.</p>
+        </div>
+    </div>
+
+    <div class="pd-charts-grid">
+
+        <div class="pd-panel">
+            <div class="pd-panel-header">
+                <div>
+                    <h3>Monthly Revenue</h3>
+                    <p>Revenue trend across the platform</p>
+                </div>
+                <span class="pd-panel-icon"><i class="fas fa-chart-line"></i></span>
+            </div>
+
+            <div class="pd-chart-container">
+                <canvas id="pdRevenueChart"></canvas>
+            </div>
+        </div>
+
+        <div class="pd-panel">
+            <div class="pd-panel-header">
+                <div>
+                    <h3>Company Status</h3>
+                    <p>Active and suspended companies</p>
+                </div>
+                <span class="pd-panel-icon"><i class="fas fa-chart-pie"></i></span>
+            </div>
+
+            <div class="pd-chart-container pd-doughnut-container">
+                <canvas id="pdCompanyChart"></canvas>
+            </div>
+
+            <div class="pd-chart-legend">
+                <span><i class="legend-dot active"></i> Active ({{ $activeCompanies }})</span>
+                <span><i class="legend-dot suspended"></i> Suspended ({{ $suspendedCompanies }})</span>
+            </div>
+        </div>
+
+        <div class="pd-panel pd-wide-panel">
+            <div class="pd-panel-header">
+                <div>
+                    <h3>Company Revenue Performance</h3>
+                    <p>Revenue comparison by company, when available</p>
+                </div>
+                <span class="pd-panel-icon"><i class="fas fa-chart-bar"></i></span>
+            </div>
+
+            <div class="pd-chart-container">
+                <canvas id="pdPerformanceChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    {{-- COMPANY MANAGEMENT SHORTCUTS --}}
+    <div class="pd-section-heading">
+        <div>
+            <h2>Company Management</h2>
+            <p>Quick access to the main platform management functions.</p>
+        </div>
+    </div>
+
+    <div class="pd-management-grid">
+
+        <a href="{{ route('super.companies.create') }}" class="pd-management-card">
+            <div class="pd-management-icon green">
+                <i class="fas fa-plus-circle"></i>
+            </div>
+            <div>
+                <h3>Register Company</h3>
+                <p>Create a new company and configure its account.</p>
+            </div>
+            <i class="fas fa-arrow-right pd-card-arrow"></i>
         </a>
 
-        <a href="{{ route('super.companies.index') }}" class="quick-action">
-            <div class="quick-icon">▦</div>
-            <div>
-                <strong>Manage companies</strong>
-                <span>Review and manage tenants</span>
+        <a href="{{ route('super.companies.index') }}" class="pd-management-card">
+            <div class="pd-management-icon blue">
+                <i class="fas fa-building"></i>
             </div>
-            <b>→</b>
+            <div>
+                <h3>Company Directory</h3>
+                <p>View, search and manage registered companies.</p>
+            </div>
+            <i class="fas fa-arrow-right pd-card-arrow"></i>
         </a>
 
-        <div class="platform-note">
-            <div class="note-icon">◆</div>
-            <div>
-                <strong>Platform administration</strong>
-                <p>Manage company workspaces centrally while keeping each business's records isolated.</p>
+        <a href="{{ route('super.activity') }}" class="pd-management-card">
+            <div class="pd-management-icon purple">
+                <i class="fas fa-history"></i>
             </div>
+            <div>
+                <h3>Activity Logs</h3>
+                <p>Review recorded platform activities and changes.</p>
+            </div>
+            <i class="fas fa-arrow-right pd-card-arrow"></i>
+        </a>
+
+    </div>
+
+    {{-- RECENT COMPANIES --}}
+    <div class="pd-section-heading pd-recent-heading">
+        <div>
+            <h2>Recently Registered Companies</h2>
+            <p>Latest companies added to your platform.</p>
         </div>
-    </section>
+
+        <a href="{{ route('super.companies.index') }}" class="pd-text-link">
+            View all companies <i class="fas fa-arrow-right"></i>
+        </a>
+    </div>
+
+    <div class="pd-panel pd-table-panel">
+        <div class="pd-table-wrap">
+            <table class="pd-table">
+                <thead>
+                    <tr>
+                        <th>Company</th>
+                        <th>Company ID</th>
+                        <th>Registration Date</th>
+                        <th>Status</th>
+                        <th class="pd-align-right">Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @forelse($recentCompanies as $company)
+                        <tr>
+                            <td>
+                                <div class="pd-company-cell">
+                                    <div class="pd-company-avatar">
+                                        {{ strtoupper(substr($company->name ?? 'C', 0, 1)) }}
+                                    </div>
+                                    <div>
+                                        <strong>{{ $company->name ?? 'Unnamed Company' }}</strong>
+                                        <small>Registered company</small>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="pd-id">#{{ $company->id }}</span>
+                            </td>
+
+                            <td>
+                                {{ $company->created_at?->format('d M Y') ?? '—' }}
+                            </td>
+
+                            <td>
+                                @if($company->suspended ?? false)
+                                    <span class="pd-badge suspended">
+                                        <i class="fas fa-ban"></i> Suspended
+                                    </span>
+                                @else
+                                    <span class="pd-badge active">
+                                        <i class="fas fa-check-circle"></i> Active
+                                    </span>
+                                @endif
+                            </td>
+
+                            <td class="pd-align-right">
+                                <a href="{{ route('super.companies.show', $company->id) }}"
+                                   class="pd-view-btn">
+                                    Manage <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5">
+                                <div class="pd-empty">
+                                    <i class="fas fa-building"></i>
+                                    <strong>No companies registered yet</strong>
+                                    <span>Register your first company to get started.</span>
+                                    <a href="{{ route('super.companies.create') }}">
+                                        Add Company
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 
 </div>
 
-@endsection
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-@push('styles')
-<style>
-    /* ---------- PROFESSIONAL TOKENS ---------- */
-    :root {
-        --bg-page: #f5f7fa;
-        --surface: #ffffff;
-        --border-light: #e6eaef;
-        --border-mid: #d9dee6;
-        --text-primary: #1e293b;
-        --text-secondary: #4a5a6e;
-        --text-muted: #7b8a9c;
-        --nav-bg: #0b1c2b;
-        --nav-text: #eef2f7;
-        --nav-muted: #b0c0d0;
-        --accent-blue: #2563eb;
-        --accent-green-soft: #e8f0eb;
-        --accent-blue-soft: #e8effa;
-        --accent-red-soft: #f8ecec;
-        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.02), 0 1px 3px rgba(0, 0, 0, 0.03);
-        --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.03);
-        --radius-md: 12px;
-        --radius-sm: 10px;
-        --radius-pill: 50px;
-        --green-700: #1b6b4c;
-        --green-600: #2b7a5a;
-        --green-50: #e6f0eb;
-        --line: #e9edf2;
-    }
+{{-- CHARTS LIBRARY --}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    /* ---------- NAVIGATION BAR — ALL FEATURES ---------- */
-    .navbar {
-        background: var(--nav-bg);
-        color: var(--nav-text);
-        padding: 0 32px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        height: 68px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-        position: sticky;
-        top: 0;
-        z-index: 100;
-    }
-
-    .nav-brand {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        font-weight: 700;
-        font-size: 18px;
-        letter-spacing: -0.3px;
-    }
-
-    .nav-brand .brand-icon {
-        width: 34px;
-        height: 34px;
-        background: #1f3a4b;
-        border-radius: 8px;
-        display: grid;
-        place-items: center;
-        font-size: 16px;
-        color: #ffffff;
-        font-weight: 800;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .nav-links {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        flex-wrap: wrap;
-        margin: 0 20px;
-    }
-
-    .nav-links a {
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--nav-muted);
-        border-radius: 40px;
-        transition: all 0.15s;
-        white-space: nowrap;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .nav-links a:hover {
-        background: rgba(255, 255, 255, 0.06);
-        color: #ffffff;
-    }
-
-    .nav-links a.active {
-        background: rgba(255, 255, 255, 0.1);
-        color: #ffffff;
-    }
-
-    .nav-links i {
-        font-style: normal;
-        font-size: 14px;
-        opacity: 0.75;
-    }
-
-    .nav-right {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-
-    .nav-right .user-badge {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: rgba(255, 255, 255, 0.05);
-        padding: 6px 14px 6px 10px;
-        border-radius: 40px;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        font-size: 12px;
-        font-weight: 600;
-    }
-
-    .user-badge .avatar {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        background: #2d4b5e;
-        display: grid;
-        place-items: center;
-        font-size: 12px;
-        font-weight: 700;
-        color: #ffffff;
-    }
-
-    /* ---------- PAGE HEADING ---------- */
-    .page-heading {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 28px;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
-
-    .page-heading h1 {
-        font-size: 26px;
-        font-weight: 800;
-        letter-spacing: -0.6px;
-        color: var(--text-primary);
-        margin: 0;
-    }
-
-    .page-heading p {
-        font-size: 13px;
-        color: var(--text-secondary);
-        margin-top: 4px;
-        font-weight: 500;
-    }
-
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 10px 20px;
-        background: #ffffff;
-        border: 1px solid var(--border-mid);
-        border-radius: var(--radius-sm);
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--text-primary);
-        transition: all 0.15s;
-        box-shadow: var(--shadow-sm);
-        line-height: 1;
-        text-decoration: none;
-        cursor: pointer;
-    }
-
-    .btn:hover {
-        background: #f9fbfd;
-        border-color: #bcc6d2;
-    }
-
-    .btn-primary {
-        background: var(--nav-bg);
-        color: #ffffff;
-        border: 1px solid var(--nav-bg);
-    }
-
-    .btn-primary:hover {
-        background: #142b3b;
-        border-color: #142b3b;
-    }
-
-    /* ---------- STATS GRID ---------- */
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 18px;
-        margin-bottom: 28px;
-    }
-
-    .stat-card {
-        background: var(--surface);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-md);
-        padding: 20px 22px;
-        box-shadow: var(--shadow-card);
-        transition: border 0.2s;
-        min-width: 0;
-    }
-
-    .stat-card:hover {
-        border-color: var(--border-mid);
-    }
-
-    .stat-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        color: var(--text-muted);
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.2px;
-        text-transform: uppercase;
-    }
-
-    .stat-icon {
-        width: 36px;
-        height: 36px;
-        display: grid;
-        place-items: center;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: 800;
-        background: #f1f4f9;
-        color: var(--text-secondary);
-        border: 1px solid #e9edf3;
-    }
-
-    .stat-icon.green {
-        background: var(--accent-green-soft);
-        color: var(--green-700);
-        border-color: #d4e3da;
-    }
-    .stat-icon.blue {
-        background: var(--accent-blue-soft);
-        color: var(--accent-blue);
-        border-color: #d0ddee;
-    }
-    .stat-icon.red {
-        background: var(--accent-red-soft);
-        color: #a13e3e;
-        border-color: #ecd4d4;
-    }
-
-    .stat-number {
-        font-family: 'Manrope', sans-serif;
-        font-weight: 800;
-        font-size: 32px;
-        letter-spacing: -1px;
-        margin-top: 16px;
-        color: var(--text-primary);
-        line-height: 1.2;
-    }
-
-    .stat-caption {
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 4px;
-        font-weight: 500;
-    }
-
-    /* ---------- TWO‑COLUMN PANELS ---------- */
-    .dashboard-columns {
-        display: grid;
-        grid-template-columns: minmax(0, 1.65fr) minmax(280px, .85fr);
-        gap: 22px;
-        align-items: start;
-    }
-
-    .panel {
-        background: var(--surface);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-card);
-        overflow: hidden;
-    }
-
-    .panel-heading {
-        padding: 20px 22px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        border-bottom: 1px solid var(--line);
-        background: #ffffff;
-    }
-
-    .panel-heading h3 {
-        font-family: 'Manrope', sans-serif;
-        margin: 0;
-        font-size: 14px;
-        font-weight: 800;
-        letter-spacing: -0.2px;
-    }
-
-    .panel-heading p {
-        margin: 4px 0 0;
-        font-size: 11px;
-        color: var(--text-muted);
-        font-weight: 500;
-    }
-
-    .text-link {
-        color: var(--accent-blue);
-        font-size: 11px;
-        font-weight: 800;
-        white-space: nowrap;
-        letter-spacing: 0.1px;
-        transition: color 0.15s;
-        text-decoration: none;
-    }
-
-    .text-link:hover {
-        color: #1d4ed8;
-    }
-
-    /* ---------- COMPANY LIST ---------- */
-    .company-row {
-        padding: 14px 22px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        border-bottom: 1px solid #f0f3f7;
-        transition: background 0.1s;
-    }
-
-    .company-row:last-child {
-        border-bottom: 0;
-    }
-
-    .company-row:hover {
-        background: #fafcff;
-    }
-
-    .company-symbol {
-        width: 40px;
-        height: 40px;
-        flex-shrink: 0;
-        border-radius: 10px;
-        background: #f1f5f9;
-        color: #1e293b;
-        display: grid;
-        place-items: center;
-        font-weight: 700;
-        font-size: 15px;
-        border: 1px solid #e2e8f0;
-    }
-
-    .company-info {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        min-width: 0;
-        flex: 1;
-    }
-
-    .company-info strong {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--text-primary);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .company-info span,
-    .company-date {
-        color: var(--text-muted);
-        font-size: 10.5px;
-        font-weight: 500;
-    }
-
-    .company-date {
-        white-space: nowrap;
-    }
-
-    .status-badge {
-        padding: 4px 12px;
-        border-radius: var(--radius-pill);
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 0.2px;
-        white-space: nowrap;
-        border: 1px solid transparent;
-    }
-
-    .status-badge.active {
-        background: #eaf5ee;
-        color: #1a6b3f;
-        border-color: #d3e8da;
-    }
-
-    .status-badge.suspended {
-        background: #fdf2e8;
-        color: #9b5e2a;
-        border-color: #f0dfcf;
-    }
-
-    /* ---------- QUICK ACTIONS ---------- */
-    .quick-action {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        padding: 17px 22px;
-        border-bottom: 1px solid #eff2f7;
-        transition: background 0.15s;
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .quick-action:hover {
-        background: #f8fbfe;
-    }
-
-    .quick-icon {
-        width: 38px;
-        height: 38px;
-        display: grid;
-        place-items: center;
-        background: #f1f5f9;
-        color: #1e293b;
-        border-radius: 9px;
-        font-size: 18px;
-        font-weight: 600;
-        border: 1px solid #e2e8f0;
-        flex-shrink: 0;
-    }
-
-    .quick-action div:nth-child(2) {
-        flex: 1;
-    }
-
-    .quick-action strong {
-        display: block;
-        font-size: 12.5px;
-        font-weight: 700;
-        color: var(--text-primary);
-    }
-
-    .quick-action span {
-        display: block;
-        color: var(--text-muted);
-        font-size: 10.5px;
-        margin-top: 3px;
-        font-weight: 500;
-    }
-
-    .quick-action b {
-        color: #a0b0c0;
-        font-size: 16px;
-        font-weight: 400;
-    }
-
-    /* platform note — clean, neutral */
-    .platform-note {
-        display: flex;
-        gap: 12px;
-        margin: 18px 20px 22px;
-        padding: 16px 18px;
-        background: #f7faff;
-        border-radius: 10px;
-        border: 1px solid #e7edf6;
-    }
-
-    .note-icon {
-        color: var(--accent-blue);
-        font-size: 18px;
-        font-weight: 700;
-        line-height: 1;
-    }
-
-    .platform-note strong {
-        font-size: 11.5px;
-        font-weight: 800;
-        color: var(--text-primary);
-        letter-spacing: 0.1px;
-    }
-
-    .platform-note p {
-        color: #4e6277;
-        font-size: 10.5px;
-        line-height: 1.7;
-        margin: 5px 0 0;
-        font-weight: 500;
-    }
-
-    /* ---------- EMPTY STATE ---------- */
-    .empty-state {
-        padding: 48px 24px;
-        text-align: center;
-    }
-
-    .empty-icon {
-        font-size: 32px;
-        color: #b8c8d8;
-        margin-bottom: 12px;
-        font-weight: 400;
-    }
-
-    .empty-state strong {
-        display: block;
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--text-primary);
-    }
-
-    .empty-state p {
-        color: var(--text-muted);
-        font-size: 12px;
-        margin: 8px 0 20px;
-        font-weight: 500;
-    }
-
-    /* ---------- RESPONSIVE ---------- */
-    @media (max-width: 1200px) {
-        .navbar {
-            padding: 0 24px;
-        }
-        .nav-links a {
-            padding: 6px 10px;
-            font-size: 12px;
-        }
-    }
-
-    @media (max-width: 1024px) {
-        .dashboard-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        .dashboard-columns {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    @media (max-width: 900px) {
-        .nav-links {
-            display: none;
-        }
-        .navbar {
-            padding: 0 18px;
-        }
-    }
-
-    @media (max-width: 600px) {
-        .dashboard-grid {
-            gap: 12px;
-        }
-        .stat-card {
-            padding: 16px;
-        }
-        .stat-number {
-            font-size: 26px;
-        }
-        .company-date {
-            display: none;
-        }
-        .company-row {
-            padding: 12px 16px;
-            gap: 10px;
-        }
-        .page-heading h1 {
-            font-size: 22px;
-        }
-    }
-</style>
-@endpush
-
-@push('scripts')
 <script>
-    // Navigation active state (optional — assumes your layout handles it)
-    // This is only for standalone preview; in production the layout usually sets active states.
-    document.addEventListener('DOMContentLoaded', function () {
-        const navLinks = document.querySelectorAll('.nav-links a');
-        navLinks.forEach(link => {
-            if (link.getAttribute('href') === window.location.pathname) {
-                link.classList.add('active');
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof Chart === 'undefined') return;
+
+    const green = '#128d51';
+    const muted = '#94a3b8';
+
+    const revenueLabels = @json($monthlyLabels);
+    const revenueValues = @json($monthlyValues);
+
+    const companyLabels = ['Active', 'Suspended'];
+    const companyValues = [
+        @json($activeCompanies),
+        @json($suspendedCompanies)
+    ];
+
+    const performanceLabels = @json($companyChartLabels);
+    const performanceValues = @json($companyChartValues);
+
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false }
+        }
+    };
+
+    const revenueCanvas = document.getElementById('pdRevenueChart');
+
+    if (revenueCanvas) {
+        new Chart(revenueCanvas, {
+            type: 'line',
+            data: {
+                labels: revenueLabels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: revenueValues,
+                    borderColor: green,
+                    backgroundColor: 'rgba(18,141,81,0.10)',
+                    fill: true,
+                    tension: 0.35,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: value => 'KSh ' + Number(value).toLocaleString()
+                        },
+                        grid: { color: '#f1f5f9' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
             }
         });
-    });
+    }
+
+    const companyCanvas = document.getElementById('pdCompanyChart');
+
+    if (companyCanvas) {
+        new Chart(companyCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: companyLabels,
+                datasets: [{
+                    data: companyValues,
+                    backgroundColor: [green, '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 5
+                }]
+            },
+            options: {
+                ...commonOptions,
+                cutout: '72%',
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    const performanceCanvas = document.getElementById('pdPerformanceChart');
+
+    if (performanceCanvas) {
+        new Chart(performanceCanvas, {
+            type: 'bar',
+            data: {
+                labels: performanceLabels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: performanceValues,
+                    backgroundColor: green,
+                    borderRadius: 6,
+                    maxBarThickness: 42
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: value => 'KSh ' + Number(value).toLocaleString()
+                        },
+                        grid: { color: '#f1f5f9' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+});
 </script>
-@endpush
+
+<style>
+.platform-dashboard {
+    --pd-green: #128d51;
+    --pd-green-dark: #0f7545;
+    --pd-text: #1e293b;
+    --pd-muted: #7b8a9c;
+    --pd-border: #e6eaef;
+    --pd-bg: #f8fafc;
+    width: 100%;
+    min-width: 0;
+    color: var(--pd-text);
+    font-family: 'Manrope', sans-serif;
+    box-sizing: border-box;
+}
+
+.platform-dashboard *,
+.platform-dashboard *::before,
+.platform-dashboard *::after {
+    box-sizing: border-box;
+}
+
+.platform-dashboard .pd-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.platform-dashboard .pd-eyebrow {
+    color: var(--pd-green);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+}
+
+.platform-dashboard .pd-header h1 {
+    margin: 5px 0;
+    font-size: 23px;
+    font-weight: 800;
+    letter-spacing: -.6px;
+}
+
+.platform-dashboard .pd-header p,
+.platform-dashboard .pd-section-heading p {
+    margin: 0;
+    color: var(--pd-muted);
+    font-size: 12px;
+}
+
+.platform-dashboard .pd-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+}
+
+.platform-dashboard .pd-btn {
+    min-height: 40px;
+    padding: 0 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+    transition: .2s ease;
+}
+
+.platform-dashboard .pd-btn-primary {
+    color: #fff;
+    background: var(--pd-green);
+}
+
+.platform-dashboard .pd-btn-primary:hover {
+    color: #fff;
+    background: var(--pd-green-dark);
+}
+
+.platform-dashboard .pd-btn-light {
+    color: #475569;
+    background: #fff;
+    border: 1px solid var(--pd-border);
+}
+
+.platform-dashboard .pd-btn-light:hover {
+    color: var(--pd-green);
+    border-color: var(--pd-green);
+}
+
+.platform-dashboard .pd-status {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 15px 17px;
+    margin-bottom: 25px;
+    background: #f0faf4;
+    border: 1px solid #d7efdf;
+    border-radius: 10px;
+}
+
+.platform-dashboard .pd-status-icon {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    color: var(--pd-green);
+    background: #dcf5e6;
+    border-radius: 9px;
+}
+
+.platform-dashboard .pd-status-content {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.platform-dashboard .pd-status-content strong {
+    font-size: 12px;
+}
+
+.platform-dashboard .pd-status-content span,
+.platform-dashboard .pd-status-date {
+    color: #64748b;
+    font-size: 11px;
+}
+
+.platform-dashboard .pd-status-date {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.platform-dashboard .pd-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 25px 0 13px;
+}
+
+.platform-dashboard .pd-section-heading h2 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.platform-dashboard .pd-text-link {
+    color: var(--pd-green);
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.platform-dashboard .pd-text-link:hover {
+    color: var(--pd-green-dark);
+}
+
+.platform-dashboard .pd-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 13px;
+}
+
+.platform-dashboard .pd-stat-card {
+    min-width: 0;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid var(--pd-border);
+    border-radius: 11px;
+    box-shadow: 0 2px 7px rgba(15, 23, 42, .025);
+}
+
+.platform-dashboard .pd-stat-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.platform-dashboard .pd-stat-top > span {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.platform-dashboard .pd-stat-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.platform-dashboard .pd-stat-icon.green,
+.platform-dashboard .pd-management-icon.green {
+    color: #128d51;
+    background: #e8f7ee;
+}
+
+.platform-dashboard .pd-stat-icon.blue,
+.platform-dashboard .pd-management-icon.blue {
+    color: #2563eb;
+    background: #eff6ff;
+}
+
+.platform-dashboard .pd-stat-icon.red {
+    color: #dc2626;
+    background: #fef2f2;
+}
+
+.platform-dashboard .pd-stat-icon.amber {
+    color: #d97706;
+    background: #fffbeb;
+}
+
+.platform-dashboard .pd-stat-icon.purple,
+.platform-dashboard .pd-management-icon.purple {
+    color: #7c3aed;
+    background: #f5f3ff;
+}
+
+.platform-dashboard .pd-stat-icon.cyan {
+    color: #0891b2;
+    background: #ecfeff;
+}
+
+.platform-dashboard .pd-stat-card h3 {
+    margin: 12px 0 3px;
+    font-size: 25px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -.6px;
+    overflow-wrap: anywhere;
+}
+
+.platform-dashboard .pd-stat-card small {
+    color: var(--pd-muted);
+    font-size: 10px;
+}
+
+.platform-dashboard .pd-highlight-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 13px;
+    margin-top: 14px;
+}
+
+.platform-dashboard .pd-highlight-card {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-width: 0;
+    padding: 17px;
+    background: #fff;
+    border: 1px solid var(--pd-border);
+    border-radius: 11px;
+}
+
+.platform-dashboard .pd-highlight-icon {
+    width: 39px;
+    height: 39px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    color: var(--pd-green);
+    background: #e8f7ee;
+    border-radius: 9px;
+}
+
+.platform-dashboard .pd-highlight-icon.today {
+    color: #2563eb;
+    background: #eff6ff;
+}
+
+.platform-dashboard .pd-highlight-icon.orders {
+    color: #7c3aed;
+    background: #f5f3ff;
+}
+
+.platform-dashboard .pd-highlight-card span {
+    color: #64748b;
+    font-size: 10px;
+}
+
+.platform-dashboard .pd-highlight-card h2 {
+    margin: 4px 0;
+    font-size: 19px;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.platform-dashboard .pd-highlight-card small {
+    color: var(--pd-muted);
+    font-size: 9px;
+}
+
+.platform-dashboard .pd-charts-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
+    gap: 14px;
+}
+
+.platform-dashboard .pd-panel {
+    min-width: 0;
+    padding: 17px;
+    background: #fff;
+    border: 1px solid var(--pd-border);
+    border-radius: 11px;
+    box-shadow: 0 2px 7px rgba(15, 23, 42, .025);
+}
+
+.platform-dashboard .pd-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.platform-dashboard .pd-panel-header h3 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.platform-dashboard .pd-panel-header p {
+    margin: 0;
+    color: var(--pd-muted);
+    font-size: 10px;
+}
+
+.platform-dashboard .pd-panel-icon {
+    color: var(--pd-green);
+    font-size: 15px;
+}
+
+.platform-dashboard .pd-chart-container {
+    position: relative;
+    width: 100%;
+    height: 235px;
+}
+
+.platform-dashboard .pd-doughnut-container {
+    max-width: 240px;
+    height: 190px;
+    margin: 0 auto;
+}
+
+.platform-dashboard .pd-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 8px;
+    color: #64748b;
+    font-size: 10px;
+}
+
+.platform-dashboard .legend-dot {
+    width: 8px;
+    height: 8px;
+    display: inline-block;
+    margin-right: 4px;
+    border-radius: 50%;
+}
+
+.platform-dashboard .legend-dot.active {
+    background: var(--pd-green);
+}
+
+.platform-dashboard .legend-dot.suspended {
+    background: #ef4444;
+}
+
+.platform-dashboard .pd-wide-panel {
+    grid-column: 1 / -1;
+}
+
+.platform-dashboard .pd-management-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 13px;
+}
+
+.platform-dashboard .pd-management-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid var(--pd-border);
+    border-radius: 10px;
+    text-decoration: none;
+    transition: .2s ease;
+}
+
+.platform-dashboard .pd-management-card:hover {
+    border-color: #b7dfc8;
+    box-shadow: 0 5px 15px rgba(18, 141, 81, .07);
+    transform: translateY(-2px);
+}
+
+.platform-dashboard .pd-management-icon {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+}
+
+.platform-dashboard .pd-management-card h3 {
+    margin: 0 0 4px;
+    color: var(--pd-text);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.platform-dashboard .pd-management-card p {
+    margin: 0;
+    color: var(--pd-muted);
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+.platform-dashboard .pd-card-arrow {
+    margin-left: auto;
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.platform-dashboard .pd-table-panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.platform-dashboard .pd-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.platform-dashboard .pd-table {
+    width: 100%;
+    min-width: 650px;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.platform-dashboard .pd-table th {
+    padding: 13px 16px;
+    color: #64748b;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--pd-border);
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.platform-dashboard .pd-table td {
+    padding: 13px 16px;
+    border-bottom: 1px solid #f0f2f5;
+    color: #475569;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.platform-dashboard .pd-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.platform-dashboard .pd-company-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.platform-dashboard .pd-company-avatar {
+    width: 33px;
+    height: 33px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    color: var(--pd-green);
+    background: #e8f7ee;
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.platform-dashboard .pd-company-cell strong {
+    display: block;
+    color: var(--pd-text);
+    font-size: 11px;
+}
+
+.platform-dashboard .pd-company-cell small {
+    display: block;
+    margin-top: 3px;
+    color: var(--pd-muted);
+    font-size: 9px;
+}
+
+.platform-dashboard .pd-id {
+    color: #64748b;
+    font-weight: 700;
+}
+
+.platform-dashboard .pd-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    border-radius: 20px;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.platform-dashboard .pd-badge.active {
+    color: #15803d;
+    background: #ecfdf3;
+}
+
+.platform-dashboard .pd-badge.suspended {
+    color: #b42318;
+    background: #fef3f2;
+}
+
+.platform-dashboard .pd-align-right {
+    text-align: right;
+}
+
+.platform-dashboard .pd-view-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    color: var(--pd-green);
+    background: #f0faf4;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.platform-dashboard .pd-view-btn:hover {
+    color: #fff;
+    background: var(--pd-green);
+}
+
+.platform-dashboard .pd-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 35px 15px;
+    text-align: center;
+}
+
+.platform-dashboard .pd-empty > i {
+    margin-bottom: 5px;
+    color: #94a3b8;
+    font-size: 25px;
+}
+
+.platform-dashboard .pd-empty strong {
+    font-size: 12px;
+}
+
+.platform-dashboard .pd-empty span {
+    color: var(--pd-muted);
+    font-size: 10px;
+}
+
+.platform-dashboard .pd-empty a {
+    margin-top: 7px;
+    color: var(--pd-green);
+    font-size: 11px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+@media (max-width: 1100px) {
+    .platform-dashboard .pd-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .platform-dashboard .pd-management-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .platform-dashboard .pd-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .platform-dashboard .pd-header-actions {
+        width: 100%;
+    }
+
+    .platform-dashboard .pd-header-actions .pd-btn {
+        flex: 1;
+    }
+
+    .platform-dashboard .pd-highlight-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .platform-dashboard .pd-charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .platform-dashboard .pd-wide-panel {
+        grid-column: auto;
+    }
+
+    .platform-dashboard .pd-management-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .platform-dashboard .pd-status {
+        align-items: flex-start;
+    }
+
+    .platform-dashboard .pd-status-date {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .platform-dashboard .pd-header h1 {
+        font-size: 20px;
+    }
+
+    .platform-dashboard .pd-stats-grid {
+        gap: 9px;
+    }
+
+    .platform-dashboard .pd-stat-card {
+        padding: 12px;
+    }
+
+    .platform-dashboard .pd-stat-card h3 {
+        font-size: 21px;
+    }
+
+    .platform-dashboard .pd-section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .platform-dashboard .pd-section-heading .pd-text-link {
+        align-self: flex-start;
+    }
+
+    .platform-dashboard .pd-chart-container {
+        height: 210px;
+    }
+}
+
+@media (max-width: 340px) {
+    .platform-dashboard .pd-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .platform-dashboard .pd-header-actions {
+        flex-direction: column;
+    }
+
+    .platform-dashboard .pd-header-actions .pd-btn {
+        width: 100%;
+    }
+}
+</style>
+@endsection
