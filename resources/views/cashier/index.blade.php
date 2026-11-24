@@ -346,6 +346,410 @@ button:disabled{cursor:not-allowed}
 @media (hover:none){.tile:hover{border-color:var(--line);box-shadow:var(--sh)}.btn:hover{background:inherit}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 
+
+
+/* =========================================
+   UPDATED PRODUCT CARDS
+   Full product images - no cropping
+========================================= */
+
+.tiles{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:10px;
+    width:100%;
+    align-content:start;
+}
+
+.tile-form{
+    margin:0;
+    min-width:0;
+    width:100%;
+}
+
+.tile{
+    width:100%;
+    min-width:0;
+    min-height:195px;
+    height:100%;
+    padding:0;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    text-align:left;
+    position:relative;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:var(--sh);
+    transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+
+.tile:hover{
+    transform:translateY(-2px);
+    border-color:#86efac;
+    box-shadow:0 8px 18px -10px rgba(21,128,61,.35);
+}
+
+.tile:active{
+    transform:scale(.985);
+}
+
+.tile:disabled{
+    opacity:.5;
+    transform:none;
+    box-shadow:var(--sh);
+}
+
+/* PRODUCT IMAGE AREA */
+
+.t-image{
+    height:110px;
+    width:100%;
+    position:relative;
+    overflow:hidden;
+    flex:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#fff;
+    padding:5px;
+}
+
+.t-image img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    object-position:center;
+    display:block;
+    padding:3px;
+    transition:transform .25s ease;
+}
+
+.tile:hover .t-image img{
+    transform:scale(1.03);
+}
+
+/* IMAGE PLACEHOLDER */
+
+.t-placeholder{
+    width:32px;
+    height:32px;
+    display:grid;
+    place-items:center;
+    border-radius:9px;
+    background:rgba(220,252,231,.8);
+    color:#15803d;
+}
+
+.t-placeholder svg{
+    width:17px;
+    height:17px;
+}
+
+/* PRODUCT SKU */
+
+.t-sku{
+    position:absolute;
+    top:5px;
+    left:5px;
+    max-width:75%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    padding:3px 5px;
+    border-radius:5px;
+    background:rgba(255,255,255,.96);
+    color:#166534;
+    font:700 .55rem var(--mono);
+    box-shadow:0 2px 5px rgba(5,46,22,.08);
+}
+
+/* STOCK BADGES */
+
+.t-stock{
+    position:absolute;
+    right:5px;
+    bottom:5px;
+    padding:3px 6px;
+    border-radius:999px;
+    font-size:.55rem;
+    font-weight:750;
+    line-height:1.2;
+    box-shadow:0 2px 5px rgba(5,46,22,.08);
+}
+
+.t-stock.good{
+    background:#dcfce7;
+    color:#166534;
+}
+
+.t-stock.low{
+    background:#fef3c7;
+    color:#92400e;
+}
+
+.t-stock.out{
+    background:#fee2e2;
+    color:#b91c1c;
+}
+
+.t-stock.untracked{
+    background:#fff;
+    color:#475569;
+}
+
+/* PRODUCT DETAILS */
+
+.t-content{
+    flex:1;
+    min-width:0;
+    padding:.5rem .55rem .45rem;
+    display:flex;
+    flex-direction:column;
+    gap:.2rem;
+}
+
+.t-cat{
+    color:#789083;
+    background:transparent;
+    padding:0;
+    border-radius:0;
+    font-size:.58rem;
+    font-weight:600;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.t-name{
+    color:#12372b;
+    font-size:.78rem;
+    font-weight:750;
+    line-height:1.3;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+    min-height:2.45em;
+    flex:none;
+}
+
+/* PRICE AND ADD BUTTON */
+
+.t-foot{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:.3rem;
+    margin-top:auto;
+    padding-top:.25rem;
+}
+
+.t-price{
+    color:#15803d;
+    font-size:.84rem;
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+}
+
+.t-add{
+    width:28px;
+    height:28px;
+    border-radius:8px;
+    background:#dcfce7;
+    color:#15803d;
+    display:grid;
+    place-items:center;
+    flex:none;
+    transition:background .15s,color .15s;
+}
+
+.tile:hover .t-add{
+    background:#15803d;
+    color:#fff;
+}
+
+/* QUANTITY IN CART */
+
+.t-qty{
+    position:absolute;
+    top:5px;
+    right:5px;
+    z-index:2;
+    min-width:19px;
+    height:19px;
+    padding:0 .3rem;
+    border-radius:999px;
+    background:#15803d;
+    color:#fff;
+    font-weight:750;
+    font-size:.58rem;
+    display:grid;
+    place-items:center;
+}
+
+/* =========================================
+   LIST VIEW
+========================================= */
+
+.tiles.list{
+    grid-template-columns:1fr;
+    gap:.5rem;
+}
+
+.tiles.list .tile{
+    min-height:85px;
+    height:auto;
+    flex-direction:row;
+    align-items:stretch;
+    padding:0;
+}
+
+.tiles.list .t-image{
+    width:85px;
+    height:auto;
+    min-height:85px;
+    padding:5px;
+}
+
+.tiles.list .t-content{
+    padding:.45rem .55rem;
+}
+
+.tiles.list .t-name{
+    min-height:0;
+}
+
+.tiles.list .t-sku{
+    font-size:.48rem;
+    top:4px;
+    left:4px;
+}
+
+.tiles.list .t-stock{
+    font-size:.48rem;
+    right:4px;
+    bottom:4px;
+}
+
+.tiles.list .t-qty{
+    top:5px;
+    right:5px;
+}
+
+.tiles.list .t-foot{
+    padding-top:.15rem;
+}
+
+.nomatch{
+    grid-column:1/-1;
+    text-align:center;
+    color:var(--mut);
+    padding:2rem 1rem;
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media(max-width:1023px){
+
+    .tiles:not(.list){
+        grid-template-columns:repeat(3,minmax(0,1fr));
+    }
+
+    .t-image{
+        height:105px;
+    }
+
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media(max-width:767px){
+
+    .tiles:not(.list){
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:7px;
+    }
+
+    .t-image{
+        height:100px;
+    }
+
+    .tile{
+        min-height:180px;
+    }
+
+    .t-content{
+        padding:.4rem;
+    }
+
+    .t-name{
+        font-size:.73rem;
+    }
+
+    .t-price{
+        font-size:.78rem;
+    }
+
+    .tiles.list .t-image{
+        width:80px;
+        min-height:80px;
+    }
+
+}
+
+/* =========================================
+   SMALL MOBILE
+========================================= */
+
+@media(max-width:380px){
+
+    .tiles:not(.list){
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:7px;
+    }
+
+    .t-image{
+        height:90px;
+    }
+
+    .t-content{
+        padding:.35rem;
+    }
+
+    .t-stock{
+        font-size:.48rem;
+        padding:3px 4px;
+    }
+
+    .t-sku{
+        font-size:.48rem;
+    }
+
+}
+
+/* =========================================
+   MOBILE LANDSCAPE
+========================================= */
+
+@media(max-width:767px) and (orientation:landscape){
+
+    .tiles:not(.list){
+        grid-template-columns:repeat(3,minmax(0,1fr));
+    }
+
+    .t-image{
+        height:100px;
+    }
+
+}
+
+
 /* Print: the Print button prints only the receipt through its own frame */
 @page{margin:0;size:{{ $paper }}mm auto}
 @media print{
@@ -437,22 +841,85 @@ button:disabled{cursor:not-allowed}
     @else
       <div class="tiles" id="tiles">
         @foreach($products as $p)
-          @php $qIn = $inCart[$p->id] ?? 0; @endphp
-          <form class="tile-form" method="POST" action="{{ route('cashier.act') }}"
-                data-name="{{ mb_strtolower($p->name) }}" data-cat="{{ $p->category }}">
+          @php
+            $qIn = $inCart[$p->id] ?? 0;
+            $tracked = (bool) $p->track_stock;
+            $stock = (int) $p->stock;
+            $reorder = (int) $p->reorder_level;
+
+            if (!$tracked) {
+                $stockClass = 'untracked';
+                $stockLabel = 'Not tracked';
+            } elseif ($stock <= 0) {
+                $stockClass = 'out';
+                $stockLabel = 'Out of stock';
+            } elseif ($stock <= $reorder) {
+                $stockClass = 'low';
+                $stockLabel = $stock . ' left · Low';
+            } else {
+                $stockClass = 'good';
+                $stockLabel = $stock . ' in stock';
+            }
+          @endphp
+
+          <form class="tile-form"
+                method="POST"
+                action="{{ route('cashier.act') }}"
+                data-name="{{ mb_strtolower($p->name) }}"
+                data-cat="{{ $p->category }}">
             @csrf
             <input type="hidden" name="action" value="add">
             <input type="hidden" name="order_id" value="{{ $selIsOpen ? $selectedId : 0 }}">
             <input type="hidden" name="product_id" value="{{ $p->id }}">
-            <button class="tile" type="submit" aria-label="Add {{ $p->name }}" {{ $editLocked ? 'disabled' : '' }}>
-              <span class="t-top">
-                <span class="t-cat">{{ $p->category }}</span>
-                @if($qIn)<span class="t-qty">×{{ $qIn }}</span>@endif
+
+            <button class="tile"
+                    type="submit"
+                    aria-label="Add {{ $p->name }}"
+                    {{ $editLocked ? 'disabled' : '' }}>
+
+              <span class="t-image">
+                @if($p->image_path)
+                  <img
+    src="{{ asset($p->image_path) }}""
+    alt="{{ $p->name }}"
+    loading="lazy"
+    onerror="this.style.display='none';this.nextElementSibling.style.display='grid';"
+>
+                @endif
+
+                <span class="t-placeholder"
+                      style="{{ $p->image_path ? 'display:none' : '' }}">
+                  <svg viewBox="0 0 24 24"
+                       fill="none"
+                       stroke="currentColor"
+                       stroke-width="1.7"
+                       stroke-linecap="round"
+                       stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="3"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <path d="m21 15-5-5L5 21"/>
+                  </svg>
+                </span>
+
+                <span class="t-sku">{{ $p->sku ?: 'NO SKU' }}</span>
+                <span class="t-stock {{ $stockClass }}">{{ $stockLabel }}</span>
+
+                @if($qIn)
+                  <span class="t-qty">×{{ $qIn }}</span>
+                @endif
               </span>
-              <span class="t-name">{{ $p->name }}</span>
-              <span class="t-foot">
-                <span class="t-price">{{ $m($p->price) }}</span>
-                <span class="t-add"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+
+              <span class="t-content">
+                <span class="t-cat">{{ $p->category }}</span>
+                <span class="t-name">{{ $p->name }}</span>
+                <span class="t-foot">
+                  <span class="t-price">{{ $m($p->price) }}</span>
+                  <span class="t-add">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                      <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                  </span>
+                </span>
               </span>
             </button>
           </form>

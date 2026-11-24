@@ -47,7 +47,11 @@ class CashierController extends Controller
         $selTax     = ($selected && $taxRate > 0) ? $selDue * $taxRate / (100 + $taxRate) : 0.0;
 
         $inCart = [];
-        if ($selIsOpen) foreach ($items as $it) $inCart[(int) $it->product_id] = (int) $it->qty;
+        if ($selIsOpen) {
+            foreach ($items as $it) {
+                $inCart[(int) $it->product_id] = (int) $it->qty;
+            }
+        }
 
         $lastPay = $selectedId
             ? DB::table('payments')->where('order_id', $selectedId)->orderByDesc('id')->first()
@@ -59,12 +63,26 @@ class CashierController extends Controller
             ? $request->query('paper')
             : ($this->setting('receipt_paper', '80') === '58' ? '58' : '80');
 
+        /*
+         * Active products for the cashier catalogue.
+         * Additional fields support product images and stock badges.
+         */
         $products = DB::table('products as p')
             ->leftJoin('categories as c', 'c.id', '=', 'p.category_id')
             ->where('p.active', 1)
             ->orderBy('c.name')
             ->orderBy('p.name')
-            ->select('p.id', 'p.name', 'p.price', 'p.sku', 'p.stock', DB::raw("COALESCE(c.name, 'General') as category"))
+            ->select(
+                'p.id',
+                'p.name',
+                'p.price',
+                'p.sku',
+                'p.stock',
+                'p.image_path',
+                'p.track_stock',
+                'p.reorder_level',
+                DB::raw("COALESCE(c.name, 'General') as category")
+            )
             ->get();
 
         $categories = $products->pluck('category')->unique()->values();
@@ -136,11 +154,17 @@ class CashierController extends Controller
                     return $this->go(route('cashier.index', ['order' => $oid]), 'success', "Order #$oid opened.");
 
                 case 'add':
-                    $product = DB::table('products')->where('id', (int) $request->input('product_id'))->where('active', 1)->first();
+                    $product = DB::table('products')
+                        ->where('id', (int) $request->input('product_id'))
+                        ->where('active', 1)
+                        ->first();
+
                     if (! $product) return $this->go($target, 'error', 'That product is not available.');
 
                     $order = $oid ? $this->ownOrder($oid) : null;
-                    if ($order && $block = $this->editBlock($order)) return $this->go($target, 'error', $block);
+                    if ($order && $block = $this->editBlock($order)) {
+                        return $this->go($target, 'error', $block);
+                    }
 
                     if (! $order || $order->status !== 'open') {
                         $oid = DB::table('orders')->insertGetId([
@@ -148,15 +172,21 @@ class CashierController extends Controller
                         ]);
                     }
 
-                    $existing = DB::table('order_items')->where('order_id', $oid)->where('product_id', $product->id)->first();
+                    $existing = DB::table('order_items')
+                        ->where('order_id', $oid)
+                        ->where('product_id', $product->id)
+                        ->first();
+
                     if ($existing) {
-                        DB::table('order_items')->where('id', $existing->id)->update(['qty' => min(99, $existing->qty + 1)]);
+                        DB::table('order_items')->where('id', $existing->id)
+                            ->update(['qty' => min(99, $existing->qty + 1)]);
                     } else {
                         DB::table('order_items')->insert([
                             'order_id' => $oid, 'product_id' => $product->id,
                             'name' => $product->name, 'price' => $product->price, 'qty' => 1,
                         ]);
                     }
+
                     $this->recalc($oid);
                     return redirect(route('cashier.index', ['order' => $oid]));
 
@@ -167,11 +197,13 @@ class CashierController extends Controller
 
                     $item = (int) $request->input('item_id', 0);
                     $qty  = (int) $request->input('qty', 0);
+
                     if ($qty <= 0) {
                         DB::table('order_items')->where('id', $item)->where('order_id', $oid)->delete();
                     } else {
                         DB::table('order_items')->where('id', $item)->where('order_id', $oid)->update(['qty' => min(99, $qty)]);
                     }
+
                     $this->recalc($oid);
                     return redirect($target);
 
@@ -190,6 +222,7 @@ class CashierController extends Controller
 
                     $amt = round(min(max(0.0, (float) $request->input('discount', 0)), (float) $order->total), 2);
                     DB::table('orders')->where('id', $oid)->update(['discount' => $amt]);
+
                     return $this->go($target, 'success', $amt > 0
                         ? 'Discount of ' . $this->money($amt) . ' applied.' : 'Discount removed.');
 
@@ -204,16 +237,20 @@ class CashierController extends Controller
                 case 'resume':
                     $n = DB::table('orders')->where('id', $oid)->where('user_id', $uid)->where('status', 'held')
                         ->update(['status' => 'open']);
+
                     if ($n === 0) return $this->go($target, 'error', 'This order cannot be resumed.');
                     return $this->go($target, 'success', "Order #$oid resumed.");
 
                 case 'cancel':
                     if ($this->hasPending($oid)) return $this->go($target, 'error', self::PAY_LOCK);
+
                     if ($this->hasSuccess($oid)) {
                         return $this->go($target, 'error', 'This order has payments and cannot be cancelled here. Ask a manager.');
                     }
+
                     $n = DB::table('orders')->where('id', $oid)->where('user_id', $uid)
                         ->whereIn('status', ['open', 'held'])->update(['status' => 'cancelled']);
+
                     if ($n === 0) return $this->go($target, 'error', 'This order is already closed.');
                     return $this->go(route('cashier.index'), 'success', "Order #$oid cancelled.");
 
@@ -222,6 +259,7 @@ class CashierController extends Controller
                     if (! $order || $order->status !== 'open') return $this->go($target, 'error', 'This order is already closed.');
 
                     $method = (string) $request->input('method', '');
+
                     if ($method === 'cash') {
                         $r = $this->payCash($oid, $request);
                     } elseif ($method === 'mpesa') {
@@ -274,20 +312,29 @@ class CashierController extends Controller
 
         return DB::transaction(function () use ($oid, $applied, $tendered) {
             $o = DB::table('orders')->where('id', $oid)->lockForUpdate()->first();
+
             if (! $o || $o->status !== 'open') return $this->result(false, 'This order is already closed.');
-            if ($this->hasPending($oid))       return $this->result(false, self::PAY_LOCK);
+            if ($this->hasPending($oid)) return $this->result(false, self::PAY_LOCK);
 
             $s         = $this->summary($o);
             $remaining = $s['remaining'];
 
-            if ($applied <= 0)                 return $this->result(false, 'Enter the cash amount.');
+            if ($applied <= 0) return $this->result(false, 'Enter the cash amount.');
             if ($applied > $remaining + 0.005) return $this->result(false, 'Cash is more than the balance due.');
-            if ($tendered + 0.005 < $applied)  return $this->result(false, 'Cash received is less than the amount applied.');
+            if ($tendered + 0.005 < $applied) return $this->result(false, 'Cash received is less than the amount applied.');
 
             $covers = $applied >= $remaining - 0.005;
+            if ($covers) {
+    $stockError = $this->deductOrderStock($oid, (int) $o->user_id);
+
+    if ($stockError) {
+        return $this->result(false, $stockError);
+    }
+}
             if (! $covers && $tendered > $applied + 0.005) {
                 return $this->result(false, 'Change is only given when cash covers the full balance.');
             }
+
             $change = $covers ? round($tendered - $applied, 2) : 0.0;
 
             DB::table('payments')->insert([
@@ -318,7 +365,71 @@ class CashierController extends Controller
             ];
         });
     }
+private function deductOrderStock(int $oid, int $userId): ?string
+{
+    $items = DB::table('order_items')
+        ->where('order_id', $oid)
+        ->select('product_id')
+        ->selectRaw('SUM(qty) as quantity')
+        ->groupBy('product_id')
+        ->get();
 
+    $updates = [];
+
+    // First validate all products before changing any stock.
+    foreach ($items as $item) {
+        $product = DB::table('products')
+            ->where('id', $item->product_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$product) {
+            return "A product in order #{$oid} no longer exists.";
+        }
+
+        if (isset($product->track_stock) && !$product->track_stock) {
+            continue;
+        }
+
+        $quantity = (int) $item->quantity;
+        $before = (int) $product->stock;
+
+        if ($quantity <= 0 || $before < $quantity) {
+            return "Insufficient stock for {$product->name}. Available: {$before}. Required: {$quantity}.";
+        }
+
+        $updates[] = [
+            'product_id' => $product->id,
+            'quantity' => $quantity,
+            'before' => $before,
+            'after' => $before - $quantity,
+        ];
+    }
+
+    // Deduct stock only after every product passes validation.
+    foreach ($updates as $item) {
+        DB::table('products')
+            ->where('id', $item['product_id'])
+            ->update([
+                'stock' => $item['after'],
+                'updated_at' => now(),
+            ]);
+
+        DB::table('stock_adjustments')->insert([
+            'product_id' => $item['product_id'],
+            'user_id' => $userId,
+            'change' => -$item['quantity'],
+            'stock_before' => $item['before'],
+            'stock_after' => $item['after'],
+            'reason' => 'sale',
+            'note' => "Stock deducted for order #{$oid}",
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    return null;
+}
     /* ------------------------------------------------------------------
      | Helpers
      * ------------------------------------------------------------------ */
@@ -377,13 +488,15 @@ class CashierController extends Controller
         if ($o->status !== 'open') return null;
         if ($this->hasPending($o->id)) return self::PAY_LOCK;
         if ($this->hasSuccess($o->id)) return 'Payment has started on this order, so it can no longer change.';
+
         return null;
     }
 
     private function recalc(int $oid): void
     {
-        $total    = (float) DB::table('order_items')->where('order_id', $oid)
-                        ->selectRaw('COALESCE(SUM(qty * price), 0) AS t')->value('t');
+        $total = (float) DB::table('order_items')->where('order_id', $oid)
+            ->selectRaw('COALESCE(SUM(qty * price), 0) AS t')->value('t');
+
         $discount = min((float) DB::table('orders')->where('id', $oid)->value('discount'), $total);
 
         DB::table('orders')->where('id', $oid)->update(['total' => $total, 'discount' => $discount]);
@@ -392,6 +505,7 @@ class CashierController extends Controller
     private function tableName(Request $r): ?string
     {
         $t = mb_substr(trim((string) $r->input('table_no', '')), 0, 20);
+
         return $t !== '' ? $t : null;
     }
 
@@ -431,7 +545,7 @@ class CashierController extends Controller
             ->selectRaw('o.payment_method AS m, SUM(o.total - o.discount) AS s')->groupBy('o.payment_method')
             ->pluck('s', 'm');
 
-        $cash  = (float) ($pm['cash'] ?? 0)  + (float) ($legacy['cash'] ?? 0);
+        $cash  = (float) ($pm['cash'] ?? 0) + (float) ($legacy['cash'] ?? 0);
         $mpesa = (float) ($pm['mpesa'] ?? 0) + (float) ($legacy['mpesa'] ?? 0);
 
         return [
@@ -450,24 +564,29 @@ class CashierController extends Controller
                 ? ['wait', 'Checking the M-Pesa payment', 'Please wait. Items and payment stay locked until it is confirmed.']
                 : ['wait', 'Waiting for M-Pesa PIN', 'Ask the customer to enter their PIN. This page updates automatically.'];
         }
+
         if ($open && $last && $last->status === 'failed') {
             return ['bad', 'M-Pesa payment not completed', $last->response_message ?: 'Try again or take cash.'];
         }
+
         if ($open && $last && $last->status === 'review') {
             return ['bad', 'Payment needs a manager check', $last->response_message ?: 'Ask a manager to check this payment.'];
         }
+
         if ($open && $sum['paid'] > 0 && $sum['remaining'] > 0) {
             return ['info', 'Part paid', 'Balance due ' . $this->money($sum['remaining'])
                 . '. Take the rest in cash or M-Pesa. Items can no longer change.'];
         }
+
         return null;
     }
 
     private function receipt(object $o, int $id, float $taxRate, string $cur): array
     {
-        $due  = $this->due($o);
-        $tax  = $taxRate > 0 ? $due * $taxRate / (100 + $taxRate) : 0.0;
-        $no   = 'RCP-' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
+        $due = $this->due($o);
+        $tax = $taxRate > 0 ? $due * $taxRate / (100 + $taxRate) : 0.0;
+        $no  = 'RCP-' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
+
         $pays = DB::table('payments')->where('order_id', $id)->where('status', 'success')->orderBy('id')->get();
         $paid = round((float) $pays->sum('amount'), 2);
 
@@ -495,6 +614,7 @@ class CashierController extends Controller
     private function go(string $to, string $type = 'success', ?string $msg = null)
     {
         $r = redirect($to);
+
         return $msg ? $r->with('flash', ['type' => $type, 'msg' => $msg]) : $r;
     }
 
