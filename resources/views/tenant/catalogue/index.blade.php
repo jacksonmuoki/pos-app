@@ -263,11 +263,11 @@
                             <td>
                                 <div class="cat-item">
                                     <div class="cat-thumb">
-                                        @if($item->image_path)
-                                            <img src="{{ asset('storage/' . $item->image_path) }}" alt="">
-                                        @else
-                                            {{ strtoupper(substr($item->name, 0, 1)) }}
-                                        @endif
+                                       @if($item->image_path)
+    <img src="{{ asset($item->image_path) }}" alt="{{ $item->name }}">
+@else
+    {{ strtoupper(substr($item->name, 0, 1)) }}
+@endif
                                     </div>
                                     <div>
                                         <div class="cat-item-name">{{ $item->name }}</div>
