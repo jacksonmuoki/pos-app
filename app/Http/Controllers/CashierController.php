@@ -20,16 +20,33 @@ class CashierController extends Controller
 
         $receiptId  = (int) $request->query('receipt', 0);
         $receiptOrd = $receiptId ? $this->ownOrder($receiptId) : null;
-        if (! $receiptOrd) $receiptId = 0;
+
+        if (! $receiptOrd) {
+            $receiptId = 0;
+        }
 
         $autoPrint = false;
-        if ($receiptOrd && $receiptOrd->status === 'paid' && session()->has("autoprint.$receiptId")) {
-            $autoPrint = (bool) session()->pull("autoprint.$receiptId");
+
+        /*
+         * If the order is paid, show its receipt only when printing
+         * was requested. Otherwise, return to a clean POS screen.
+         */
+        if ($receiptOrd && $receiptOrd->status === 'paid') {
+            $autoPrint = (bool) session()->pull("autoprint.$receiptId", false);
+
+            if (! $autoPrint && ! $request->boolean('print')) {
+                session()->reflash();
+
+                return redirect()->route('cashier.index');
+            }
         }
 
         $selectedId = (int) $request->query('order', 0) ?: $receiptId;
         $selected   = $selectedId ? $this->ownOrder($selectedId) : null;
-        if (! $selected) $selectedId = 0;
+
+        if (! $selected) {
+            $selectedId = 0;
+        }
 
         $cur     = $this->setting('currency', 'KES');
         $taxRate = (float) $this->setting('tax_rate', '0');
@@ -41,12 +58,18 @@ class CashierController extends Controller
         $selIsOpen  = $selected && $selected->status === 'open';
         $selHeld    = $selected && $selected->status === 'held';
         $selDue     = $selected ? $this->due($selected) : 0.0;
-        $sum        = $selected ? $this->summary($selected) : ['cash' => 0, 'mpesa' => 0, 'paid' => 0, 'remaining' => 0];
+        $sum        = $selected
+            ? $this->summary($selected)
+            : ['cash' => 0, 'mpesa' => 0, 'paid' => 0, 'remaining' => 0];
+
         $selPending = $selIsOpen && $this->hasPending($selectedId);
         $editLocked = $selIsOpen && ($selPending || $sum['paid'] > 0);
-        $selTax     = ($selected && $taxRate > 0) ? $selDue * $taxRate / (100 + $taxRate) : 0.0;
+        $selTax     = ($selected && $taxRate > 0)
+            ? $selDue * $taxRate / (100 + $taxRate)
+            : 0.0;
 
         $inCart = [];
+
         if ($selIsOpen) {
             foreach ($items as $it) {
                 $inCart[(int) $it->product_id] = (int) $it->qty;
@@ -54,7 +77,10 @@ class CashierController extends Controller
         }
 
         $lastPay = $selectedId
-            ? DB::table('payments')->where('order_id', $selectedId)->orderByDesc('id')->first()
+            ? DB::table('payments')
+                ->where('order_id', $selectedId)
+                ->orderByDesc('id')
+                ->first()
             : null;
 
         $banner = $this->banner($selIsOpen, $selPending, $sum, $lastPay);
@@ -88,9 +114,13 @@ class CashierController extends Controller
         $categories = $products->pluck('category')->unique()->values();
 
         $quick = [round($sum['remaining'], 2)];
+
         foreach ([500, 1000, 2000, 5000] as $note) {
-            if ($note > $sum['remaining']) $quick[] = $note;
+            if ($note > $sum['remaining']) {
+                $quick[] = $note;
+            }
         }
+
         $quick = array_slice(array_values(array_unique($quick)), 0, 4);
 
         return view('cashier.index', [
@@ -126,11 +156,13 @@ class CashierController extends Controller
             'banner'      => $banner,
             'quick'       => $quick,
             'paper'       => $paper,
-            'receipt'     => $receiptOrd ? $this->receipt($receiptOrd, $receiptId, $taxRate, $cur) : null,
+            'receipt'     => $receiptOrd
+                ? $this->receipt($receiptOrd, $receiptId, $taxRate, $cur)
+                : null,
             'receiptOrd'  => $receiptOrd,
             'receiptId'   => $receiptId,
             'autoPrint'   => $autoPrint || (bool) $request->query('print'),
-            'closeUrl' => route('cashier.index'),
+            'closeUrl'    => route('cashier.index'),
         ]);
     }
 
@@ -148,10 +180,19 @@ class CashierController extends Controller
             switch ($action) {
                 case 'new':
                     $oid = DB::table('orders')->insertGetId([
-                        'user_id' => $uid, 'status' => 'open', 'table_no' => $this->tableName($request),
-                        'total' => 0, 'discount' => 0, 'created_at' => now(),
+                        'user_id'    => $uid,
+                        'status'     => 'open',
+                        'table_no'   => $this->tableName($request),
+                        'total'      => 0,
+                        'discount'   => 0,
+                        'created_at' => now(),
                     ]);
-                    return $this->go(route('cashier.index', ['order' => $oid]), 'success', "Order #$oid opened.");
+
+                    return $this->go(
+                        route('cashier.index', ['order' => $oid]),
+                        'success',
+                        "Order #$oid opened."
+                    );
 
                 case 'add':
                     $product = DB::table('products')
@@ -159,16 +200,23 @@ class CashierController extends Controller
                         ->where('active', 1)
                         ->first();
 
-                    if (! $product) return $this->go($target, 'error', 'That product is not available.');
+                    if (! $product) {
+                        return $this->go($target, 'error', 'That product is not available.');
+                    }
 
                     $order = $oid ? $this->ownOrder($oid) : null;
+
                     if ($order && $block = $this->editBlock($order)) {
                         return $this->go($target, 'error', $block);
                     }
 
                     if (! $order || $order->status !== 'open') {
                         $oid = DB::table('orders')->insertGetId([
-                            'user_id' => $uid, 'status' => 'open', 'total' => 0, 'discount' => 0, 'created_at' => now(),
+                            'user_id'    => $uid,
+                            'status'     => 'open',
+                            'total'      => 0,
+                            'discount'   => 0,
+                            'created_at' => now(),
                         ]);
                     }
 
@@ -178,88 +226,177 @@ class CashierController extends Controller
                         ->first();
 
                     if ($existing) {
-                        DB::table('order_items')->where('id', $existing->id)
-                            ->update(['qty' => min(99, $existing->qty + 1)]);
+                        DB::table('order_items')
+                            ->where('id', $existing->id)
+                            ->update([
+                                'qty' => min(99, $existing->qty + 1),
+                            ]);
                     } else {
                         DB::table('order_items')->insert([
-                            'order_id' => $oid, 'product_id' => $product->id,
-                            'name' => $product->name, 'price' => $product->price, 'qty' => 1,
+                            'order_id'   => $oid,
+                            'product_id' => $product->id,
+                            'name'       => $product->name,
+                            'price'      => $product->price,
+                            'qty'        => 1,
                         ]);
                     }
 
                     $this->recalc($oid);
+
                     return redirect(route('cashier.index', ['order' => $oid]));
 
                 case 'qty':
                     $order = $this->ownOrder($oid);
-                    if (! $order || $order->status !== 'open') return $this->go($target, 'error', 'This order is closed.');
-                    if ($block = $this->editBlock($order)) return $this->go($target, 'error', $block);
+
+                    if (! $order || $order->status !== 'open') {
+                        return $this->go($target, 'error', 'This order is closed.');
+                    }
+
+                    if ($block = $this->editBlock($order)) {
+                        return $this->go($target, 'error', $block);
+                    }
 
                     $item = (int) $request->input('item_id', 0);
                     $qty  = (int) $request->input('qty', 0);
 
                     if ($qty <= 0) {
-                        DB::table('order_items')->where('id', $item)->where('order_id', $oid)->delete();
+                        DB::table('order_items')
+                            ->where('id', $item)
+                            ->where('order_id', $oid)
+                            ->delete();
                     } else {
-                        DB::table('order_items')->where('id', $item)->where('order_id', $oid)->update(['qty' => min(99, $qty)]);
+                        DB::table('order_items')
+                            ->where('id', $item)
+                            ->where('order_id', $oid)
+                            ->update([
+                                'qty' => min(99, $qty),
+                            ]);
                     }
 
                     $this->recalc($oid);
+
                     return redirect($target);
 
                 case 'rename':
                     $order = $this->ownOrder($oid);
-                    if (! $order || $order->status !== 'open') return $this->go($target, 'error', 'This order is closed.');
-                    if ($block = $this->editBlock($order)) return $this->go($target, 'error', $block);
 
-                    DB::table('orders')->where('id', $oid)->update(['table_no' => $this->tableName($request)]);
+                    if (! $order || $order->status !== 'open') {
+                        return $this->go($target, 'error', 'This order is closed.');
+                    }
+
+                    if ($block = $this->editBlock($order)) {
+                        return $this->go($target, 'error', $block);
+                    }
+
+                    DB::table('orders')
+                        ->where('id', $oid)
+                        ->update([
+                            'table_no' => $this->tableName($request),
+                        ]);
+
                     return $this->go($target, 'success', 'Table or customer updated.');
 
                 case 'discount':
                     $order = $this->ownOrder($oid);
-                    if (! $order || $order->status !== 'open') return $this->go($target, 'error', 'This order is closed.');
-                    if ($block = $this->editBlock($order)) return $this->go($target, 'error', $block);
 
-                    $amt = round(min(max(0.0, (float) $request->input('discount', 0)), (float) $order->total), 2);
-                    DB::table('orders')->where('id', $oid)->update(['discount' => $amt]);
+                    if (! $order || $order->status !== 'open') {
+                        return $this->go($target, 'error', 'This order is closed.');
+                    }
 
-                    return $this->go($target, 'success', $amt > 0
-                        ? 'Discount of ' . $this->money($amt) . ' applied.' : 'Discount removed.');
+                    if ($block = $this->editBlock($order)) {
+                        return $this->go($target, 'error', $block);
+                    }
+
+                    $amt = round(
+                        min(
+                            max(0.0, (float) $request->input('discount', 0)),
+                            (float) $order->total
+                        ),
+                        2
+                    );
+
+                    DB::table('orders')
+                        ->where('id', $oid)
+                        ->update(['discount' => $amt]);
+
+                    return $this->go(
+                        $target,
+                        'success',
+                        $amt > 0
+                            ? 'Discount of ' . $this->money($amt) . ' applied.'
+                            : 'Discount removed.'
+                    );
 
                 case 'hold':
                     $order = $this->ownOrder($oid);
-                    if (! $order || $order->status !== 'open') return $this->go($target, 'error', 'This order cannot be held.');
-                    if ($block = $this->editBlock($order)) return $this->go($target, 'error', $block);
+
+                    if (! $order || $order->status !== 'open') {
+                        return $this->go($target, 'error', 'This order cannot be held.');
+                    }
+
+                    if ($block = $this->editBlock($order)) {
+                        return $this->go($target, 'error', $block);
+                    }
 
                     DB::table('orders')->where('id', $oid)->update([
-    'status' => 'held',
-    'updated_at' => now(),
-]);
-                    return $this->go(route('cashier.index'), 'success', "Order #$oid put on hold.");
+                        'status'     => 'held',
+                        'updated_at' => now(),
+                    ]);
+
+                    return $this->go(
+                        route('cashier.index'),
+                        'success',
+                        "Order #$oid put on hold."
+                    );
 
                 case 'resume':
-                    $n = DB::table('orders')->where('id', $oid)->where('user_id', $uid)->where('status', 'held')
+                    $n = DB::table('orders')
+                        ->where('id', $oid)
+                        ->where('user_id', $uid)
+                        ->where('status', 'held')
                         ->update(['status' => 'open']);
 
-                    if ($n === 0) return $this->go($target, 'error', 'This order cannot be resumed.');
+                    if ($n === 0) {
+                        return $this->go($target, 'error', 'This order cannot be resumed.');
+                    }
+
                     return $this->go($target, 'success', "Order #$oid resumed.");
 
                 case 'cancel':
-                    if ($this->hasPending($oid)) return $this->go($target, 'error', self::PAY_LOCK);
-
-                    if ($this->hasSuccess($oid)) {
-                        return $this->go($target, 'error', 'This order has payments and cannot be cancelled here. Ask a manager.');
+                    if ($this->hasPending($oid)) {
+                        return $this->go($target, 'error', self::PAY_LOCK);
                     }
 
-                    $n = DB::table('orders')->where('id', $oid)->where('user_id', $uid)
-                        ->whereIn('status', ['open', 'held'])->update(['status' => 'cancelled']);
+                    if ($this->hasSuccess($oid)) {
+                        return $this->go(
+                            $target,
+                            'error',
+                            'This order has payments and cannot be cancelled here. Ask a manager.'
+                        );
+                    }
 
-                    if ($n === 0) return $this->go($target, 'error', 'This order is already closed.');
-                    return $this->go(route('cashier.index'), 'success', "Order #$oid cancelled.");
+                    $n = DB::table('orders')
+                        ->where('id', $oid)
+                        ->where('user_id', $uid)
+                        ->whereIn('status', ['open', 'held'])
+                        ->update(['status' => 'cancelled']);
+
+                    if ($n === 0) {
+                        return $this->go($target, 'error', 'This order is already closed.');
+                    }
+
+                    return $this->go(
+                        route('cashier.index'),
+                        'success',
+                        "Order #$oid cancelled."
+                    );
 
                 case 'pay':
                     $order = $this->ownOrder($oid);
-                    if (! $order || $order->status !== 'open') return $this->go($target, 'error', 'This order is already closed.');
+
+                    if (! $order || $order->status !== 'open') {
+                        return $this->go($target, 'error', 'This order is already closed.');
+                    }
 
                     $method = (string) $request->input('method', '');
 
@@ -267,7 +404,8 @@ class CashierController extends Controller
                         $r = $this->payCash($oid, $request);
                     } elseif ($method === 'mpesa') {
                         $r = app(PaymentService::class)->startStk(
-                            $oid, $uid,
+                            $oid,
+                            $uid,
                             (string) $request->input('phone_number', ''),
                             (int) $request->input('mpesa_amount', 0),
                             auth()->user()->name
@@ -276,13 +414,41 @@ class CashierController extends Controller
                         return $this->go($target, 'error', 'Choose cash or M-Pesa.');
                     }
 
+                    /*
+                     * Remember whether the cashier requested receipt printing.
+                     */
                     session()->put("autoprint.$oid", $request->boolean('print'));
 
-                    $to = route('cashier.index', ['order' => $oid] + (! empty($r['settled']) ? ['receipt' => $oid] : []));
-                    return $this->go($to, $r['ok'] ? 'success' : 'error', $r['message']);
+                    /*
+                     * Fully settled payment:
+                     * - Printing requested: open the receipt.
+                     * - Printing not requested: go directly to the clean POS.
+                     *
+                     * Partial payments and pending M-Pesa payments stay
+                     * on the current order.
+                     */
+                    if (! empty($r['settled'])) {
+                        if ($request->boolean('print')) {
+                            $to = route('cashier.index', [
+                                'order'   => $oid,
+                                'receipt' => $oid,
+                            ]);
+                        } else {
+                            $to = route('cashier.index');
+                        }
+                    } else {
+                        $to = route('cashier.index', ['order' => $oid]);
+                    }
+
+                    return $this->go(
+                        $to,
+                        $r['ok'] ? 'success' : 'error',
+                        $r['message']
+                    );
             }
         } catch (\Throwable $e) {
             report($e);
+
             return $this->go($target, 'error', 'Could not save. Please try again.');
         }
 
@@ -297,7 +463,12 @@ class CashierController extends Controller
         $oid   = (int) $request->query('order', 0);
         $order = $this->ownOrder($oid);
 
-        if (! $order) return response()->json(['done' => true, 'order_status' => null]);
+        if (! $order) {
+            return response()->json([
+                'done'         => true,
+                'order_status' => null,
+            ]);
+        }
 
         return response()->json([
             'done'         => ! $this->hasPending($oid),
@@ -310,47 +481,79 @@ class CashierController extends Controller
      * ------------------------------------------------------------------ */
     private function payCash(int $oid, Request $req): array
     {
-        $applied  = round((float) str_replace(',', '', (string) $req->input('cash_applied', 0)), 2);
-        $tendered = round((float) str_replace(',', '', (string) $req->input('cash_tendered', 0)), 2);
+        $applied = round(
+            (float) str_replace(',', '', (string) $req->input('cash_applied', 0)),
+            2
+        );
+
+        $tendered = round(
+            (float) str_replace(',', '', (string) $req->input('cash_tendered', 0)),
+            2
+        );
 
         return DB::transaction(function () use ($oid, $applied, $tendered) {
-            $o = DB::table('orders')->where('id', $oid)->lockForUpdate()->first();
+            $o = DB::table('orders')
+                ->where('id', $oid)
+                ->lockForUpdate()
+                ->first();
 
-            if (! $o || $o->status !== 'open') return $this->result(false, 'This order is already closed.');
-            if ($this->hasPending($oid)) return $this->result(false, self::PAY_LOCK);
+            if (! $o || $o->status !== 'open') {
+                return $this->result(false, 'This order is already closed.');
+            }
+
+            if ($this->hasPending($oid)) {
+                return $this->result(false, self::PAY_LOCK);
+            }
 
             $s         = $this->summary($o);
             $remaining = $s['remaining'];
 
-            if ($applied <= 0) return $this->result(false, 'Enter the cash amount.');
-            if ($applied > $remaining + 0.005) return $this->result(false, 'Cash is more than the balance due.');
-            if ($tendered + 0.005 < $applied) return $this->result(false, 'Cash received is less than the amount applied.');
+            if ($applied <= 0) {
+                return $this->result(false, 'Enter the cash amount.');
+            }
+
+            if ($applied > $remaining + 0.005) {
+                return $this->result(false, 'Cash is more than the balance due.');
+            }
+
+            if ($tendered + 0.005 < $applied) {
+                return $this->result(false, 'Cash received is less than the amount applied.');
+            }
 
             $covers = $applied >= $remaining - 0.005;
-            if ($covers) {
-    $stockError = $this->deductOrderStock($oid, (int) $o->user_id);
 
-    if ($stockError) {
-        return $this->result(false, $stockError);
-    }
-}
+            if ($covers) {
+                $stockError = $this->deductOrderStock($oid, (int) $o->user_id);
+
+                if ($stockError) {
+                    return $this->result(false, $stockError);
+                }
+            }
+
             if (! $covers && $tendered > $applied + 0.005) {
-                return $this->result(false, 'Change is only given when cash covers the full balance.');
+                return $this->result(
+                    false,
+                    'Change is only given when cash covers the full balance.'
+                );
             }
 
             $change = $covers ? round($tendered - $applied, 2) : 0.0;
 
             DB::table('payments')->insert([
-                'order_id' => $oid, 'payment_method' => 'cash', 'amount' => $applied,
-                'status' => 'success', 'created_at' => now(),
+                'order_id'      => $oid,
+                'payment_method' => 'cash',
+                'amount'        => $applied,
+                'status'        => 'success',
+                'created_at'    => now(),
             ]);
 
             if (! $covers) {
                 return [
                     'ok'      => true,
                     'settled' => false,
-                    'message' => 'Cash of ' . $this->money($applied) . ' recorded. Balance due '
-                                 . $this->money($remaining - $applied) . '.',
+                    'message' => 'Cash of ' . $this->money($applied)
+                        . ' recorded. Balance due '
+                        . $this->money($remaining - $applied) . '.',
                 ];
             }
 
@@ -368,77 +571,84 @@ class CashierController extends Controller
             ];
         });
     }
-private function deductOrderStock(int $oid, int $userId): ?string
-{
-    $items = DB::table('order_items')
-        ->where('order_id', $oid)
-        ->select('product_id')
-        ->selectRaw('SUM(qty) as quantity')
-        ->groupBy('product_id')
-        ->get();
 
-    $updates = [];
+    /* ------------------------------------------------------------------
+     | Deduct stock after validating all order products
+     * ------------------------------------------------------------------ */
+    private function deductOrderStock(int $oid, int $userId): ?string
+    {
+        $items = DB::table('order_items')
+            ->where('order_id', $oid)
+            ->select('product_id')
+            ->selectRaw('SUM(qty) as quantity')
+            ->groupBy('product_id')
+            ->get();
 
-    // First validate all products before changing any stock.
-    foreach ($items as $item) {
-        $product = DB::table('products')
-            ->where('id', $item->product_id)
-            ->lockForUpdate()
-            ->first();
+        $updates = [];
 
-        if (!$product) {
-            return "A product in order #{$oid} no longer exists.";
+        // First validate all products before changing any stock.
+        foreach ($items as $item) {
+            $product = DB::table('products')
+                ->where('id', $item->product_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $product) {
+                return "A product in order #{$oid} no longer exists.";
+            }
+
+            if (isset($product->track_stock) && ! $product->track_stock) {
+                continue;
+            }
+
+            $quantity = (int) $item->quantity;
+            $before   = (int) $product->stock;
+
+            if ($quantity <= 0 || $before < $quantity) {
+                return "Insufficient stock for {$product->name}. Available: {$before}. Required: {$quantity}.";
+            }
+
+            $updates[] = [
+                'product_id' => $product->id,
+                'quantity'   => $quantity,
+                'before'     => $before,
+                'after'      => $before - $quantity,
+            ];
         }
 
-        if (isset($product->track_stock) && !$product->track_stock) {
-            continue;
-        }
+        // Deduct stock only after every product passes validation.
+        foreach ($updates as $item) {
+            DB::table('products')
+                ->where('id', $item['product_id'])
+                ->update([
+                    'stock'      => $item['after'],
+                    'updated_at' => now(),
+                ]);
 
-        $quantity = (int) $item->quantity;
-        $before = (int) $product->stock;
-
-        if ($quantity <= 0 || $before < $quantity) {
-            return "Insufficient stock for {$product->name}. Available: {$before}. Required: {$quantity}.";
-        }
-
-        $updates[] = [
-            'product_id' => $product->id,
-            'quantity' => $quantity,
-            'before' => $before,
-            'after' => $before - $quantity,
-        ];
-    }
-
-    // Deduct stock only after every product passes validation.
-    foreach ($updates as $item) {
-        DB::table('products')
-            ->where('id', $item['product_id'])
-            ->update([
-                'stock' => $item['after'],
-                'updated_at' => now(),
+            DB::table('stock_adjustments')->insert([
+                'product_id'  => $item['product_id'],
+                'user_id'     => $userId,
+                'change'      => -$item['quantity'],
+                'stock_before' => $item['before'],
+                'stock_after' => $item['after'],
+                'reason'      => 'sale',
+                'note'        => "Stock deducted for order #{$oid}",
+                'created_at'  => now(),
+                'updated_at'  => now(),
             ]);
+        }
 
-        DB::table('stock_adjustments')->insert([
-            'product_id' => $item['product_id'],
-            'user_id' => $userId,
-            'change' => -$item['quantity'],
-            'stock_before' => $item['before'],
-            'stock_after' => $item['after'],
-            'reason' => 'sale',
-            'note' => "Stock deducted for order #{$oid}",
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        return null;
     }
 
-    return null;
-}
     /* ------------------------------------------------------------------
      | Helpers
      * ------------------------------------------------------------------ */
     private function ownOrder(int $id): ?object
     {
-        if (! $id) return null;
+        if (! $id) {
+            return null;
+        }
 
         return DB::table('orders as o')
             ->leftJoin('users as u', 'u.id', '=', 'o.user_id')
@@ -450,7 +660,10 @@ private function deductOrderStock(int $oid, int $userId): ?string
 
     private function items(int $oid)
     {
-        return DB::table('order_items')->where('order_id', $oid)->orderBy('id')->get();
+        return DB::table('order_items')
+            ->where('order_id', $oid)
+            ->orderBy('id')
+            ->get();
     }
 
     private function due(object $o): float
@@ -460,8 +673,11 @@ private function deductOrderStock(int $oid, int $userId): ?string
 
     private function summary(object $o): array
     {
-        $sums = DB::table('payments')->where('order_id', $o->id)->where('status', 'success')
-            ->selectRaw('payment_method, SUM(amount) AS s')->groupBy('payment_method')
+        $sums = DB::table('payments')
+            ->where('order_id', $o->id)
+            ->where('status', 'success')
+            ->selectRaw('payment_method, SUM(amount) AS s')
+            ->groupBy('payment_method')
             ->pluck('s', 'payment_method');
 
         $cash  = (float) ($sums['cash'] ?? 0);
@@ -477,32 +693,56 @@ private function deductOrderStock(int $oid, int $userId): ?string
 
     private function hasPending(int $oid): bool
     {
-        return DB::table('payments')->where('order_id', $oid)->where('payment_method', 'mpesa')
-            ->whereIn('status', ['pending', 'unknown'])->exists();
+        return DB::table('payments')
+            ->where('order_id', $oid)
+            ->where('payment_method', 'mpesa')
+            ->whereIn('status', ['pending', 'unknown'])
+            ->exists();
     }
 
     private function hasSuccess(int $oid): bool
     {
-        return DB::table('payments')->where('order_id', $oid)->where('status', 'success')->exists();
+        return DB::table('payments')
+            ->where('order_id', $oid)
+            ->where('status', 'success')
+            ->exists();
     }
 
     private function editBlock(object $o): ?string
     {
-        if ($o->status !== 'open') return null;
-        if ($this->hasPending($o->id)) return self::PAY_LOCK;
-        if ($this->hasSuccess($o->id)) return 'Payment has started on this order, so it can no longer change.';
+        if ($o->status !== 'open') {
+            return null;
+        }
+
+        if ($this->hasPending($o->id)) {
+            return self::PAY_LOCK;
+        }
+
+        if ($this->hasSuccess($o->id)) {
+            return 'Payment has started on this order, so it can no longer change.';
+        }
 
         return null;
     }
 
     private function recalc(int $oid): void
     {
-        $total = (float) DB::table('order_items')->where('order_id', $oid)
-            ->selectRaw('COALESCE(SUM(qty * price), 0) AS t')->value('t');
+        $total = (float) DB::table('order_items')
+            ->where('order_id', $oid)
+            ->selectRaw('COALESCE(SUM(qty * price), 0) AS t')
+            ->value('t');
 
-        $discount = min((float) DB::table('orders')->where('id', $oid)->value('discount'), $total);
+        $discount = min(
+            (float) DB::table('orders')->where('id', $oid)->value('discount'),
+            $total
+        );
 
-        DB::table('orders')->where('id', $oid)->update(['total' => $total, 'discount' => $discount]);
+        DB::table('orders')
+            ->where('id', $oid)
+            ->update([
+                'total'    => $total,
+                'discount' => $discount,
+            ]);
     }
 
     private function tableName(Request $r): ?string
@@ -513,54 +753,74 @@ private function deductOrderStock(int $oid, int $userId): ?string
     }
 
     private function listOrders(string $status)
-{
-    $query = DB::table('orders as o')
-        ->where('o.user_id', auth()->id())
-        ->where('o.status', $status)
-        ->select(
-            'o.id',
-            'o.table_no',
-            'o.total',
-            'o.discount',
-            'o.created_at',
-            'o.updated_at'
-        )
-        ->selectRaw('(SELECT COALESCE(SUM(oi.qty), 0) FROM order_items oi WHERE oi.order_id = o.id) AS item_count');
+    {
+        $query = DB::table('orders as o')
+            ->where('o.user_id', auth()->id())
+            ->where('o.status', $status)
+            ->select(
+                'o.id',
+                'o.table_no',
+                'o.total',
+                'o.discount',
+                'o.created_at',
+                'o.updated_at'
+            )
+            ->selectRaw(
+                '(SELECT COALESCE(SUM(oi.qty), 0) FROM order_items oi WHERE oi.order_id = o.id) AS item_count'
+            );
 
-    if ($status === 'held') {
-        $query->orderByDesc('o.updated_at');
-    } else {
-        $query->orderBy('o.created_at');
+        if ($status === 'held') {
+            $query->orderByDesc('o.updated_at');
+        } else {
+            $query->orderBy('o.created_at');
+        }
+
+        return $query->limit(60)->get();
     }
-
-    return $query->limit(60)->get();
-}
 
     private function recentPaid(int $uid)
     {
-        return DB::table('orders')->where('user_id', $uid)->where('status', 'paid')
-            ->orderByDesc('paid_at')->limit(10)->get();
+        return DB::table('orders')
+            ->where('user_id', $uid)
+            ->where('status', 'paid')
+            ->orderByDesc('paid_at')
+            ->limit(10)
+            ->get();
     }
 
     private function today(int $uid, \Closure $money): array
     {
         $start = now()->startOfDay();
 
-        $t = DB::table('orders')->where('user_id', $uid)->where('status', 'paid')->where('paid_at', '>=', $start)
-            ->selectRaw('COUNT(*) AS n, COALESCE(SUM(total - discount), 0) AS sales')->first();
+        $t = DB::table('orders')
+            ->where('user_id', $uid)
+            ->where('status', 'paid')
+            ->where('paid_at', '>=', $start)
+            ->selectRaw('COUNT(*) AS n, COALESCE(SUM(total - discount), 0) AS sales')
+            ->first();
 
-        $pm = DB::table('payments as p')->join('orders as o', 'o.id', '=', 'p.order_id')
-            ->where('o.user_id', $uid)->where('o.status', 'paid')->where('o.paid_at', '>=', $start)
+        $pm = DB::table('payments as p')
+            ->join('orders as o', 'o.id', '=', 'p.order_id')
+            ->where('o.user_id', $uid)
+            ->where('o.status', 'paid')
+            ->where('o.paid_at', '>=', $start)
             ->where('p.status', 'success')
-            ->selectRaw('p.payment_method AS m, SUM(p.amount) AS s')->groupBy('p.payment_method')
+            ->selectRaw('p.payment_method AS m, SUM(p.amount) AS s')
+            ->groupBy('p.payment_method')
             ->pluck('s', 'm');
 
         // Orders paid before payment rows existed: fall back to the order's own method.
-        $legacy = DB::table('orders as o')->where('o.user_id', $uid)->where('o.status', 'paid')
+        $legacy = DB::table('orders as o')
+            ->where('o.user_id', $uid)
+            ->where('o.status', 'paid')
             ->where('o.paid_at', '>=', $start)
-            ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('payments as p')
-                ->whereColumn('p.order_id', 'o.id')->where('p.status', 'success'))
-            ->selectRaw('o.payment_method AS m, SUM(o.total - o.discount) AS s')->groupBy('o.payment_method')
+            ->whereNotExists(fn ($q) => $q
+                ->select(DB::raw(1))
+                ->from('payments as p')
+                ->whereColumn('p.order_id', 'o.id')
+                ->where('p.status', 'success'))
+            ->selectRaw('o.payment_method AS m, SUM(o.total - o.discount) AS s')
+            ->groupBy('o.payment_method')
             ->pluck('s', 'm');
 
         $cash  = (float) ($pm['cash'] ?? 0) + (float) ($legacy['cash'] ?? 0);
@@ -579,21 +839,41 @@ private function deductOrderStock(int $oid, int $userId): ?string
     {
         if ($open && $pending) {
             return ($last->status ?? '') === 'unknown'
-                ? ['wait', 'Checking the M-Pesa payment', 'Please wait. Items and payment stay locked until it is confirmed.']
-                : ['wait', 'Waiting for M-Pesa PIN', 'Ask the customer to enter their PIN. This page updates automatically.'];
+                ? [
+                    'wait',
+                    'Checking the M-Pesa payment',
+                    'Please wait. Items and payment stay locked until it is confirmed.',
+                ]
+                : [
+                    'wait',
+                    'Waiting for M-Pesa PIN',
+                    'Ask the customer to enter their PIN. This page updates automatically.',
+                ];
         }
 
         if ($open && $last && $last->status === 'failed') {
-            return ['bad', 'M-Pesa payment not completed', $last->response_message ?: 'Try again or take cash.'];
+            return [
+                'bad',
+                'M-Pesa payment not completed',
+                $last->response_message ?: 'Try again or take cash.',
+            ];
         }
 
         if ($open && $last && $last->status === 'review') {
-            return ['bad', 'Payment needs a manager check', $last->response_message ?: 'Ask a manager to check this payment.'];
+            return [
+                'bad',
+                'Payment needs a manager check',
+                $last->response_message ?: 'Ask a manager to check this payment.',
+            ];
         }
 
         if ($open && $sum['paid'] > 0 && $sum['remaining'] > 0) {
-            return ['info', 'Part paid', 'Balance due ' . $this->money($sum['remaining'])
-                . '. Take the rest in cash or M-Pesa. Items can no longer change.'];
+            return [
+                'info',
+                'Part paid',
+                'Balance due ' . $this->money($sum['remaining'])
+                    . '. Take the rest in cash or M-Pesa. Items can no longer change.',
+            ];
         }
 
         return null;
@@ -605,11 +885,20 @@ private function deductOrderStock(int $oid, int $userId): ?string
         $tax = $taxRate > 0 ? $due * $taxRate / (100 + $taxRate) : 0.0;
         $no  = 'RCP-' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
 
-        $pays = DB::table('payments')->where('order_id', $id)->where('status', 'success')->orderBy('id')->get();
+        $pays = DB::table('payments')
+            ->where('order_id', $id)
+            ->where('status', 'success')
+            ->orderBy('id')
+            ->get();
+
         $paid = round((float) $pays->sum('amount'), 2);
 
-        $mpesaRef = $pays->where('payment_method', 'mpesa')->whereNotNull('mpesa_receipt')->last();
-        $ref      = $mpesaRef ? (string) $mpesaRef->mpesa_receipt : '';
+        $mpesaRef = $pays
+            ->where('payment_method', 'mpesa')
+            ->whereNotNull('mpesa_receipt')
+            ->last();
+
+        $ref = $mpesaRef ? (string) $mpesaRef->mpesa_receipt : '';
 
         return [
             'no'      => $no,
@@ -619,30 +908,41 @@ private function deductOrderStock(int $oid, int $userId): ?string
             'pays'    => $pays,
             'isPaid'  => $o->status === 'paid',
             'balance' => max(0.0, round($due - $paid, 2)),
-            'qr'      => $this->setting('shop_name', 'POS') . ' | ' . $no . ' | ' . $cur . ' '
-                         . number_format($due, 2, '.', '') . ($ref !== '' ? ' | ' . $ref : ''),
+            'qr'      => $this->setting('shop_name', 'POS')
+                . ' | ' . $no
+                . ' | ' . $cur . ' ' . number_format($due, 2, '.', '')
+                . ($ref !== '' ? ' | ' . $ref : ''),
         ];
     }
 
     private function result(bool $ok, string $message): array
     {
-        return ['ok' => $ok, 'settled' => false, 'message' => $message];
+        return [
+            'ok'      => $ok,
+            'settled' => false,
+            'message' => $message,
+        ];
     }
 
     private function go(string $to, string $type = 'success', ?string $msg = null)
     {
         $r = redirect($to);
 
-        return $msg ? $r->with('flash', ['type' => $type, 'msg' => $msg]) : $r;
+        return $msg
+            ? $r->with('flash', ['type' => $type, 'msg' => $msg])
+            : $r;
     }
 
     private function money(float|string $v): string
     {
-        return $this->setting('currency', 'KES') . ' ' . number_format((float) $v, 2);
+        return $this->setting('currency', 'KES')
+            . ' ' . number_format((float) $v, 2);
     }
 
     private function setting(string $key, string $default = ''): string
     {
-        return (string) (DB::table('settings')->where('key', $key)->value('value') ?? $default);
+        return (string) (
+            DB::table('settings')->where('key', $key)->value('value') ?? $default
+        );
     }
 }

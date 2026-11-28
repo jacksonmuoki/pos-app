@@ -182,14 +182,32 @@ Route::middleware([
         |--------------------------------------------------------------------------
         */
 
-        Route::middleware(EnsureCompanyPermission::class . ':view reports')
-            ->prefix('business')
-            ->group(function () {
 
-                Route::get('/reports', [ReportController::class, 'index'])
-                    ->name('reports.index');
+Route::middleware(EnsureCompanyPermission::class . ':view reports')
+    ->prefix('business')
+    ->group(function () {
 
-            });
+        // Main reports dashboard
+        Route::get('/reports', [ReportController::class, 'index'])
+            ->name('reports.index');
+
+        // Individual detailed reports
+        Route::get('/reports/{section}', [ReportController::class, 'show'])
+            ->where('section', 'business-overview|sales-performance|business-insights|sales-breakdown|payment-analysis|inventory-alerts|profitability-analysis|customer-analytics|purchases-suppliers|inventory-stock-movement|transaction-status|period-comparison')
+            ->name('reports.show');
+
+        // Individual CSV exports
+        Route::get('/reports/{section}/export/csv', [ReportController::class, 'exportCsv'])
+            ->where('section', 'business-overview|sales-performance|business-insights|sales-breakdown|payment-analysis|inventory-alerts|profitability-analysis|customer-analytics|purchases-suppliers|inventory-stock-movement|transaction-status|period-comparison')
+            ->name('reports.export.csv');
+
+        // Individual PDF exports
+        Route::get('/reports/{section}/export/pdf', [ReportController::class, 'exportPdf'])
+            ->where('section', 'business-overview|sales-performance|business-insights|sales-breakdown|payment-analysis|inventory-alerts|profitability-analysis|customer-analytics|purchases-suppliers|inventory-stock-movement|transaction-status|period-comparison')
+            ->name('reports.export.pdf');
+
+    });
+
 
         Route::middleware(EnsureCompanyPermission::class . ':view activity logs')
             ->prefix('business')

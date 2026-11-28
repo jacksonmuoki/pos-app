@@ -803,8 +803,8 @@ button:disabled{cursor:not-allowed}
 
         <a class="chip held{{ $selectedId === (int) $o->id ? ' on' : '' }}"
            href="{{ route('cashier.index', ['order' => $o->id]) }}">
-            <b>On hold Â· #{{ $o->id }}{{ $o->table_no ? ' Â· ' . $o->table_no : '' }}</b>
-            <small>{{ $o->item_count }} items Â· <em class="num">{{ $m($od) }}</em></small>
+            <b>On hold · #{{ $o->id }}{{ $o->table_no ? ' · ' . $o->table_no : '' }}</b>
+            <small>{{ $o->item_count }} items · <em class="num">{{ $m($od) }}</em></small>
         </a>
     @endforeach
 </div>
@@ -849,7 +849,7 @@ button:disabled{cursor:not-allowed}
                 $stockLabel = 'Out of stock';
             } elseif ($stock <= $reorder) {
                 $stockClass = 'low';
-                $stockLabel = $stock . ' left Â· Low';
+                $stockLabel = $stock . ' left · Low';
             } else {
                 $stockClass = 'good';
                 $stockLabel = $stock . ' in stock';
@@ -899,7 +899,7 @@ button:disabled{cursor:not-allowed}
                 <span class="t-stock {{ $stockClass }}">{{ $stockLabel }}</span>
 
                 @if($qIn)
-                  <span class="t-qty">Ã—{{ $qIn }}</span>
+                  <span class="t-qty">×{{ $qIn }}</span>
                 @endif
               </span>
 
@@ -935,7 +935,7 @@ button:disabled{cursor:not-allowed}
       </div>
       <div style="display:flex;gap:.5rem;align-items:center">
         <span class="pill {{ $receiptOrd->status }}">{{ $receiptOrd->status }}</span>
-        <button class="t-x" type="button" id="ticketClose" aria-label="Close">Ã—</button>
+        <button class="t-x" type="button" id="ticketClose" aria-label="Close">×</button>
       </div>
     </div>
     <div class="rc-tools">
@@ -1034,11 +1034,11 @@ button:disabled{cursor:not-allowed}
     <div class="t-head">
       <div>
         <div class="t-id">Order #{{ $selected->id }}</div>
-        <div class="t-sub">{{ $selected->table_no ? 'Table ' . $selected->table_no . ' Â· ' : '' }}{{ \Illuminate\Support\Carbon::parse($selected->created_at)->format('H:i') }}</div>
+        <div class="t-sub">{{ $selected->table_no ? 'Table ' . $selected->table_no . ' · ' : '' }}{{ \Illuminate\Support\Carbon::parse($selected->created_at)->format('H:i') }}</div>
       </div>
       <div style="display:flex;gap:.5rem;align-items:center">
         <span class="pill {{ $selected->status }}">{{ $selected->status }}</span>
-        <button class="t-x" type="button" id="ticketClose" aria-label="Close">Ã—</button>
+        <button class="t-x" type="button" id="ticketClose" aria-label="Close">×</button>
       </div>
     </div>
 
@@ -1075,12 +1075,12 @@ button:disabled{cursor:not-allowed}
               <input type="hidden" name="order_id" value="{{ $selected->id }}">
               <input type="hidden" name="action" value="qty">
               <input type="hidden" name="item_id" value="{{ $it->id }}">
-              <button name="qty" value="{{ $it->qty - 1 }}" aria-label="{{ $it->qty === 1 ? 'Remove item' : 'Decrease' }}" {{ $editLocked ? 'disabled' : '' }}>{{ $it->qty === 1 ? '	âœ•' : 'âˆ’' }}</button>
+              <button name="qty" value="{{ $it->qty - 1 }}" aria-label="{{ $it->qty === 1 ? 'Remove item' : 'Decrease' }}" {{ $editLocked ? 'disabled' : '' }}>{{ $it->qty === 1 ? '	✕' : '−' }}</button>
               <span class="num">{{ $it->qty }}</span>
               <button name="qty" value="{{ $it->qty + 1 }}" aria-label="Increase" {{ $editLocked ? 'disabled' : '' }}>+</button>
             </form>
           @else
-            <span class="num" style="color:var(--mut);font-weight:600">Ã— {{ $it->qty }}</span>
+            <span class="num" style="color:var(--mut);font-weight:600">× {{ $it->qty }}</span>
           @endif
           <div class="li-tot num">{{ $m($it->price * $it->qty) }}</div>
         </div>
@@ -1091,7 +1091,7 @@ button:disabled{cursor:not-allowed}
       <div class="sums num">
         <div class="r"><span>Subtotal</span><span>{{ $m($selected->total) }}</span></div>
         @if($selected->discount > 0)
-          <div class="r neg"><span>Discount</span><span>âˆ’{{ $m($selected->discount) }}</span></div>
+          <div class="r neg"><span>Discount</span><span>−{{ $m($selected->discount) }}</span></div>
         @endif
         @if($taxRate > 0)
           <div class="r tx"><span>{{ $taxLabel }} {{ $taxPct }}% included</span><span>{{ $m($selTax) }}</span></div>
@@ -1176,10 +1176,10 @@ button:disabled{cursor:not-allowed}
   <div class="dlg" role="dialog" aria-modal="true" aria-label="My sales">
     <div class="dh">
       <div><h3>My sales</h3><p>Today, {{ now()->format('d M Y') }}</p></div>
-      <button class="x" type="button" data-close aria-label="Close">Ã—</button>
+      <button class="x" type="button" data-close aria-label="Close">×</button>
     </div>
     <div class="stats num">
-      <div class="stat big"><span>Total sales Â· {{ $today['n'] }} orders</span><strong>{{ $today['sales_fmt'] }}</strong></div>
+      <div class="stat big"><span>Total sales · {{ $today['n'] }} orders</span><strong>{{ $today['sales_fmt'] }}</strong></div>
       <div class="stat"><span>Cash</span><strong>{{ $today['cash'] }}</strong></div>
       <div class="stat ok"><span>M-Pesa</span><strong>{{ $today['mpesa'] }}</strong></div>
       <div class="stat"><span>Open / held</span><strong>{{ $openOrders->count() }} / {{ $heldOrders->count() }}</strong></div>
@@ -1190,7 +1190,7 @@ button:disabled{cursor:not-allowed}
       @foreach($recentPaid as $rp)
         @php $ml = $rp->payment_method === 'mpesa' ? 'M-Pesa' : ($rp->payment_method === 'split' ? 'Cash + M-Pesa' : 'Cash'); @endphp
         <a class="sale" href="{{ route('cashier.index', ['receipt' => $rp->id, 'order' => $rp->id]) }}">
-          <div><strong>#{{ $rp->id }}</strong><small>{{ $ml }} Â· {{ \Illuminate\Support\Carbon::parse($rp->paid_at)->format('H:i') }}</small></div>
+          <div><strong>#{{ $rp->id }}</strong><small>{{ $ml }} · {{ \Illuminate\Support\Carbon::parse($rp->paid_at)->format('H:i') }}</small></div>
           <div class="a"><strong class="num">{{ $m($rp->total - $rp->discount) }}</strong><small style="color:var(--brand)">View receipt</small></div>
         </a>
       @endforeach
@@ -1205,9 +1205,9 @@ button:disabled{cursor:not-allowed}
     <div class="dh">
       <div>
         <h3>Take payment</h3>
-        <p>Order #{{ $selected->id }}{{ $selected->table_no ? ' Â· ' . $selected->table_no : '' }}</p>
+        <p>Order #{{ $selected->id }}{{ $selected->table_no ? ' · ' . $selected->table_no : '' }}</p>
       </div>
-      <button class="x" type="button" data-close aria-label="Close">Ã—</button>
+      <button class="x" type="button" data-close aria-label="Close">×</button>
     </div>
 
     <form id="payForm" class="pay-f" method="POST" action="{{ route('cashier.act') }}"
@@ -1510,14 +1510,8 @@ button:disabled{cursor:not-allowed}
   }
 
 
-
-/* =========================================================
-   SMARTPOS CASHIER KEYBOARD SHORTCUTS
-   Simple Alt-based quick actions
-   ========================================================= */
-
+/* Keyboard shortcuts */
 document.addEventListener('keydown', e => {
-
   const key = e.key.toLowerCase();
 
   const typing = /INPUT|TEXTAREA|SELECT/.test(
@@ -1548,25 +1542,12 @@ document.addEventListener('keydown', e => {
 
     if (radio) {
       radio.checked = true;
-      radio.dispatchEvent(
-        new Event('change', { bubbles: true })
-      );
+      radio.dispatchEvent(new Event('change', { bubbles: true }));
     }
   };
 
-  const submitPayment = () => {
-    if (pay && !pay.hidden) {
-      const paymentForm = $('#payForm');
-
-      if (paymentForm) {
-        paymentForm.requestSubmit();
-      }
-    }
-  };
-
-  /* Escape: close active modal or panel */
+  /* Escape: close the active modal or panel */
   if (e.key === 'Escape') {
-
     if (pay && !pay.hidden) {
       e.preventDefault();
       hidePay();
@@ -1591,104 +1572,118 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  /* Require Alt without Ctrl, Shift or Meta */
-  if (
-    !e.altKey ||
-    e.ctrlKey ||
-    e.shiftKey ||
-    e.metaKey
-  ) return;
-
-  /* Prevent browser default for assigned shortcuts */
-  const shortcuts = [
-    's', 'b', 'h', 'v', 'k',
-    'n', 'r', 'c', 'm', '/', 'enter'
-  ];
-
-  if (!shortcuts.includes(key)) return;
-
-  e.preventDefault();
-  e.stopPropagation();
-
-  /* Display shortcuts */
-  if (key === '/') {
+  /* Ctrl + /: display available shortcuts */
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && key === '/') {
+    e.preventDefault();
 
     alert(
-      'SMARTPOS CASHIER SHORTCUTS\n\n' +
-      'Alt + S - Search products\n' +
-      'Alt + B - Barcode / product-code search\n' +
-      'Alt + H - Hold sale\n' +
-      'Alt + V - View held sales\n' +
-      'Alt + K - Open checkout\n' +
-      'Alt + Enter - Complete payment\n' +
-      'Alt + N - Start new sale\n' +
-      'Alt + R - Print receipt\n' +
-      'Alt + C - Select Cash\n' +
-      'Alt + M - Select M-Pesa\n' +
-      'Alt + / - Show shortcuts\n' +
+      'CASHIER KEYBOARD SHORTCUTS\n\n' +
+      'F2 - Search products\n' +
+      'F3 - Barcode / product-code search\n' +
+      'F4 - Hold current sale\n' +
+      'F5 - View held sales\n' +
+      'F8 - Open checkout\n' +
+      'F9 - Complete payment\n' +
+      'Ctrl + N - Start new order\n' +
+      'Ctrl + P - Print receipt\n' +
+      'Ctrl + Shift + C - Select Cash\n' +
+      'Ctrl + Shift + M - Select M-Pesa\n' +
+      'Ctrl + / - Show shortcuts\n' +
       'Esc - Close active modal'
     );
 
     return;
   }
 
-  /* Allow payment actions while inside payment fields */
-  const paymentAction = ['c', 'm', 'enter'].includes(key);
+  /* Ctrl + Shift: payment methods */
+  if (e.ctrlKey && e.shiftKey && !e.altKey) {
+    if (key === 'c') {
+      e.preventDefault();
+      selectPayment('cash');
+    } else if (key === 'm') {
+      e.preventDefault();
+      selectPayment('mpesa');
+    }
 
-  /* Do not interrupt ordinary typing */
-  if (typing && !paymentAction) return;
+    return;
+  }
 
-  /* Product search */
-  if (key === 's' || key === 'b') {
+  /* Ctrl + N: start a new order */
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && key === 'n') {
+    e.preventDefault();
+    submitAction('new');
+    return;
+  }
+
+  /* Ctrl + P: print receipt */
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && key === 'p') {
+    if (HAS_RECEIPT) {
+      e.preventDefault();
+      doPrint();
+    }
+    return;
+  }
+
+  /* Ctrl + Enter: compatibility shortcut for payment */
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && key === 'enter') {
+    if (pay && !pay.hidden) {
+      e.preventDefault();
+
+      const paymentForm = $('#payForm');
+
+      if (paymentForm) paymentForm.requestSubmit();
+    }
+
+    return;
+  }
+
+  /* Do not trigger ordinary shortcuts while typing */
+  if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+
+  /* F2: product search */
+  if (e.key === 'F2') {
+    e.preventDefault();
     focusSearch();
   }
 
-  /* Hold sale */
-  else if (key === 'h') {
+  /* F3: barcode / product-code search */
+  else if (e.key === 'F3') {
+    e.preventDefault();
+    focusSearch();
+  }
+
+  /* F4: hold current sale */
+  else if (e.key === 'F4') {
+    e.preventDefault();
     submitAction('hold');
   }
 
-  /* View held sales */
-  else if (key === 'v') {
+  /* F5: view held sales */
+  else if (e.key === 'F5') {
+    e.preventDefault();
     showSales();
   }
 
-  /* Open checkout */
-  else if (key === 'k') {
+  /* F8: open checkout */
+  else if (e.key === 'F8') {
+    e.preventDefault();
+
     if (openPay && !openPay.disabled) {
       showPay();
     }
   }
 
-  /* Complete payment */
-  else if (key === 'enter') {
-    submitPayment();
-  }
+  /* F9: complete payment */
+  else if (e.key === 'F9') {
+    e.preventDefault();
 
-  /* New sale */
-  else if (key === 'n') {
-    submitAction('new');
-  }
+    if (pay && !pay.hidden) {
+      const paymentForm = $('#payForm');
 
-  /* Print receipt */
-  else if (key === 'r') {
-    if (HAS_RECEIPT) {
-      doPrint();
+      if (paymentForm) paymentForm.requestSubmit();
     }
   }
-
-  /* Select Cash */
-  else if (key === 'c') {
-    selectPayment('cash');
-  }
-
-  /* Select M-Pesa */
-  else if (key === 'm') {
-    selectPayment('mpesa');
-  }
-
-}, true);
-
+});
 
 
 })();

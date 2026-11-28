@@ -20,6 +20,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome 6 Free -->
+<link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+>
 
     <style>
         :root {
@@ -77,6 +82,13 @@
             z-index: 100;
             transition: transform .25s ease;
         }
+        .sidebar a i {
+    width: 22px;
+    min-width: 22px;
+    font-size: 16px;
+    margin-right: 12px;
+    text-align: center;
+}
 
         .brand {
             height: var(--topbar-height);
@@ -360,12 +372,12 @@
 
                 <a href="{{ route('dashboard') }}"
                    class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                    <span class="nav-icon">⌂</span> Dashboard
+                    <span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Dashboard
                 </a>
 
                 <a href="{{ route('cashier.index') }}"
                    class="nav-link {{ request()->routeIs('cashier.*') ? 'active' : '' }}">
-                    <span class="nav-icon">▣</span> Point of Sale
+                    <span class="nav-icon"><i class="fa-solid fa-cash-register"></i></span> Point of Sale
                 </a>
             </div>
 
@@ -373,13 +385,13 @@
                 <div class="nav-heading">Trade</div>
 
                 <a href="{{ route('sales.index') }}" class="nav-link {{ request()->routeIs('sales.*') ? 'active' : '' }}">
-                    <span class="nav-icon">↗</span> Sales
+                    <span class="nav-icon"><i class="fa-solid fa-arrow-up-right-from-square"></i></span> Sales
                 </a>
                 <a href="{{ route('transactions.index') }}" class="nav-link {{ request()->routeIs('transactions.*') ? 'active' : '' }}">
-                    <span class="nav-icon">▤</span> Transactions
+                    <span class="nav-icon"><i class="fa-solid fa-exchange-alt"></i></span> Transactions
                 </a>
                 <a href="{{ route('receipts.index') }}" class="nav-link {{ request()->routeIs('receipts.*') ? 'active' : '' }}">
-                    <span class="nav-icon">▧</span> Receipts
+                    <span class="nav-icon"><i class="fa-solid fa-receipt"></i></span> Receipts
                 </a>
             </div>
 
@@ -387,16 +399,16 @@
                 <div class="nav-heading">Catalogue</div>
 
                 <a href="{{ route('products.create') }}" class="nav-link {{ request()->routeIs('products.create') ? 'active' : '' }}">
-                    <span class="nav-icon">+</span> Add Product
+                    <span class="nav-icon"><i class="fa-solid fa-plus"></i></span> Add Product
                 </a>
                 <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.index', 'products.edit', 'products.show') ? 'active' : '' }}">
-                    <span class="nav-icon">□</span> Products
+                    <span class="nav-icon"><i class="fa-solid fa-box-open"></i></span> Products
                 </a>
                 <a href="{{ route('categories.create') }}" class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
-                    <span class="nav-icon">▦</span> Categories
+                    <span class="nav-icon"><i class="fa-solid fa-list"></i></span> Categories
                 </a>
                 <a href="{{ route('brands.create') }}" class="nav-link {{ request()->routeIs('brands.*') ? 'active' : '' }}">
-                    <span class="nav-icon">◇</span> Brands
+                    <span class="nav-icon"><i class="fa-solid fa-tag"></i></span> Brands
                 </a>
             </div>
 
@@ -404,16 +416,16 @@
                 <div class="nav-heading">Inventory</div>
 
                 <a href="{{ route('stock.index') }}" class="nav-link {{ request()->routeIs('stock.*') ? 'active' : '' }}">
-                    <span class="nav-icon">▥</span> Stock Management
+                    <span class="nav-icon"><i class="fa-solid fa-boxes-stacked"></i></span> Stock Management
                 </a>
                 <a href="{{ route('adjustments.index') }}" class="nav-link {{ request()->routeIs('adjustments.*') ? 'active' : '' }}">
-                    <span class="nav-icon">⇄</span> Stock Adjustments
+                    <span class="nav-icon"><i class="fa-solid fa-exchange-alt"></i></span> Stock Adjustments
                 </a>
                 <a href="{{ route('suppliers.index') }}" class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
-                    <span class="nav-icon">♧</span> Suppliers
+                    <span class="nav-icon"><i class="fa-solid fa-truck"></i></span> Suppliers
                 </a>
                 <a href="{{ route('purchases.index') }}" class="nav-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}">
-                    <span class="nav-icon">▣</span> Purchases
+                    <span class="nav-icon"><i class="fa-solid fa-shopping-bag"></i></span> Purchases
                 </a>
             </div>
 
@@ -421,13 +433,13 @@
                 <div class="nav-heading">Finance</div>
 
                 <a href="{{ route('dashboard') }}" class="nav-link">
-                    <span class="nav-icon">K</span> Payments
+                    <span class="nav-icon"><i class="fa-regular fa-money-bill-transfer"></i></span> Payments
                 </a>
                 <a href="{{ route('dashboard') }}" class="nav-link">
-                    <span class="nav-icon">−</span> Expenses
+                    <span class="nav-icon"><i class="fa-solid fa-money-bill-wave"></i></span> Expenses
                 </a>
                 <a href="{{ route('dashboard') }}" class="nav-link">
-                    <span class="nav-icon">▤</span> Cash Management
+                    <span class="nav-icon"><i class="fa-solid fa-coins"></i></span> Cash Management
                 </a>
             </div>
 
@@ -435,10 +447,10 @@
                 <div class="nav-heading">Business Intelligence</div>
 
                 <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
-                    <span class="nav-icon">▥</span> Reports
+                    <span class="nav-icon"><i class="fa-solid fa-chart-bar"></i></span> Reports
                 </a>
                 <a href="{{ route('activity.index') }}" class="nav-link {{ request()->routeIs('activity.*') ? 'active' : '' }}">
-                    <span class="nav-icon">◷</span> Activity Logs
+                    <span class="nav-icon"><i class="fa-solid fa-clock"></i></span> Activity Logs
                 </a>
             </div>
 
@@ -448,24 +460,24 @@
                 @if($canManageStaff && \Illuminate\Support\Facades\Route::has('staff.index'))
                     <a href="{{ route('staff.index') }}"
                        class="nav-link {{ request()->routeIs('staff.*') ? 'active' : '' }}">
-                        <span class="nav-icon">♙</span> Staff Management
+                        <span class="nav-icon"><i class="fa-solid fa-user-friends"></i></span> Staff Management
                     </a>
                 @endif
 
                 @can('manage settings')
                     <a href="{{ route('settings.edit') }}"
                        class="nav-link {{ request()->routeIs('settings.edit', 'settings.update') ? 'active' : '' }}">
-                        <span class="nav-icon">⚙</span> Company Settings
+                        <span class="nav-icon"><i class="fa-solid fa-cog"></i></span> Company Settings
                     </a>
 
                     <a href="{{ route('settings.roles.index') }}"
                        class="nav-link {{ request()->routeIs('settings.roles.*') ? 'active' : '' }}">
-                        <span class="nav-icon">♔</span> Roles &amp; Permissions
+                        <span class="nav-icon"><i class="fa-solid fa-chess-king"></i></span> Roles &amp; Permissions
                     </a>
                 @endcan
 
                 <a href="{{ route('dashboard') }}" class="nav-link">
-                    <span class="nav-icon">▣</span> Branches
+                    <span class="nav-icon"><i class="fa-solid fa-building"></i></span> Branches
                 </a>
             </div>
 
